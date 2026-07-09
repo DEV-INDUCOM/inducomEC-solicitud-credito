@@ -1,5 +1,6 @@
 import { IconSettings, IconUsersGroup, IconShieldCheck, IconWorld } from "@tabler/icons-react";
 import { Card, IconTile } from "@/components/ui/Card";
+import { Reveal } from "@/components/ui/Reveal";
 
 const items = [
   {
@@ -26,20 +27,23 @@ const items = [
 
 export function ValueCards() {
   return (
-    <section className="bg-[var(--bg-surface)] py-16">
+    <section className="bg-[var(--bg-medium)] py-28">
       {/* Grid responsive de tarjetas: 4 columnas en escritorio, baja a
           2 columnas por debajo de 900px, y a 1 columna (apiladas) por
           debajo de 520px. Cambia esos números si quieres que el salto
           a 2 o 1 columna ocurra en otro ancho. */}
       <div className="page-container grid grid-cols-4 gap-6 max-[900px]:grid-cols-2 max-[520px]:grid-cols-1">
-        {items.map(({ icon: Icon, title, description }) => (
-          <Card key={title} className="flex flex-col gap-4">
-            <IconTile>
-              <Icon size={22} stroke={1.75} />
-            </IconTile>
-            <h3 className="text-lg font-semibold">{title}</h3>
-            <p className="text-sm text-[var(--text-secondary)] leading-normal">{description}</p>
-          </Card>
+        {items.map(({ icon: Icon, title, description }, index) => (
+          // delayMs escalonado: cada tarjeta aparece un poco después que la anterior
+          <Reveal key={title} delayMs={index * 100}>
+            <Card className="flex flex-col gap-4">
+              <IconTile>
+                <Icon size={22} stroke={1.75} />
+              </IconTile>
+              <h3 className="text-lg font-semibold">{title}</h3>
+              <p className="text-sm text-[var(--text-secondary)] leading-normal">{description}</p>
+            </Card>
+          </Reveal>
         ))}
       </div>
     </section>

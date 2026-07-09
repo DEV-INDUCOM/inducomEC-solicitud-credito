@@ -1,4 +1,5 @@
 import { Accordion } from "@/components/ui/Accordion";
+import { Reveal } from "@/components/ui/Reveal";
 
 const faqItems = [
   {
@@ -40,20 +41,19 @@ const faqItems = [
 
 export function FaqSection() {
   return (
-    <section className="bg-[var(--bg-surface-alt)] py-16" id="faq">
+    <section className="bg-[var(--bg-page)] py-28" id="faq">
       <div className="page-container">
-        <div className="mb-10 text-center">
+        <Reveal className="mb-10 text-center">
           <h2 className="text-3xl text-[var(--text-primary)]">Preguntas Frecuentes</h2>
 
           <p className="mt-3 text-[var(--text-muted)]">
             Todo lo que necesita saber sobre el proceso de acreditación y acceso.
           </p>
-          
-        </div>
+        </Reveal>
 
-        <div className="mx-auto max-w-[52rem] rounded-lg border border-[color:var(--border-strong)] bg-[var(--bg-surface-alt)] px-6 max-[640px]:px-3">
-          <Accordion items={faqItems}  />
-        </div>
+        <Reveal delayMs={150} className="mx-auto max-w-[52rem] rounded-lg border border-[color:var(--border)] bg-[var(--bg-surface-alt)] px-6 max-[640px]:px-3">
+          <Accordion items={faqItems} defaultOpenIndex={null} />
+        </Reveal>
       </div>
     </section>
   );

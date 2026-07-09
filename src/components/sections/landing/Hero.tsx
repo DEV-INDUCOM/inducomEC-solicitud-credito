@@ -1,18 +1,16 @@
 import { IconArrowRight } from "@tabler/icons-react";
 import { Eyebrow } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/LinkButton";
+import { Reveal } from "@/components/ui/Reveal";
 import { routes } from "@/lib/config/site";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-[radial-gradient(ellipse_120%_100%_at_100%_0%,var(--brand-navy-500)_0%,var(--brand-navy-800)_45%,var(--brand-navy-900)_100%)] text-[var(--text-on-dark)]">
-      {/* max-[900px]: por debajo de 900px de ancho, el layout pasa de 2
-          columnas (texto | imagen) a 1 sola columna apilada, y baja el
-          padding vertical. Para cambiar en qué ancho "salta" a mobile,
-          cambia el 900px aquí y en el <div> de la imagen más abajo
-          (usa el mismo breakpoint para que ambos cambien juntos). */}
-      <div className="page-container relative grid grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] items-center gap-12 py-20 max-[900px]:grid-cols-1 max-[900px]:py-16 max-[900px]:pb-12">
-        <div className="max-w-[46rem]">
+    // Fondo: foto real (public/images/background-image.png) + degradado navy a la izquierda
+    // (donde va el texto) que se desvanece hacia la foto a la derecha, en vez del gradiente falso anterior.
+    <section className="relative flex min-h-[700px] items-center overflow-hidden bg-[linear-gradient(90deg,var(--brand-navy-900)_0%,rgba(0,0,39,0.85)_38%,rgba(0,0,39,0.25)_70%,transparent_100%),url('/images/background-image.png')] bg-cover bg-center text-[var(--text-on-dark)]">
+      <div className="page-container relative py-24 max-[900px]:py-16">
+        <Reveal className="max-w-[46rem]">
           <Eyebrow className="mb-5">B2B Industrial Portal</Eyebrow>
           {/* max-[640px]: en celular el título baja de text-5xl (48px) a
               text-4xl (36px) para que no se vea gigante. Cambia
@@ -38,16 +36,7 @@ export function Hero() {
               Conocer beneficios
             </LinkButton>
           </div>
-        </div>
-        {/* Panel decorativo (imagen simulada). max-[900px]:aspect-video
-            achata el bloque a proporción 16:9 en mobile/tablet en vez de
-            la 4:3 de escritorio, para que no ocupe demasiado alto cuando
-            se apila debajo del texto. */}
-        <div
-          role="img"
-          aria-label="Planta industrial INDUCOM"
-          className="relative aspect-4/3 overflow-hidden rounded-xl border border-[color:var(--border-on-dark)] shadow-lg max-[900px]:aspect-video bg-[linear-gradient(160deg,rgba(238,107,3,0.25),transparent_55%),repeating-linear-gradient(120deg,rgba(255,255,255,0.05)_0_2px,transparent_2px_26px),linear-gradient(200deg,var(--brand-navy-700),var(--brand-navy-950))] after:absolute after:inset-0 after:bg-[linear-gradient(0deg,rgba(0,0,39,0.55),transparent_60%)] after:content-['']"
-        />
+        </Reveal>
       </div>
     </section>
   );

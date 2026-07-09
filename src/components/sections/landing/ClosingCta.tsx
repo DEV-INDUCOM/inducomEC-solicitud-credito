@@ -1,11 +1,13 @@
 import { LinkButton } from "@/components/ui/LinkButton";
+import { Reveal } from "@/components/ui/Reveal";
 import { routes } from "@/lib/config/site";
 
 export function ClosingCta() {
   return (
-    <section className="bg-[var(--bg-page-soft)] py-16">
+    // py-32 (128px, más que el resto) para que se note el cierre antes del footer
+    <section className="bg-[var(--bg-medium)] py-[170px]">
       <div className="page-container">
-        <div className="flex items-center justify-between gap-8 rounded-xl bg-[var(--accent)] px-12 py-10 max-[760px]:flex-col max-[760px]:items-start max-[760px]:p-8">
+        <Reveal className="flex items-center justify-between gap-8 rounded-xl bg-[var(--accent)] px-12 py-10 max-[760px]:flex-col max-[760px]:items-start max-[760px]:p-8">
           <div>
             <h2 className="max-w-[20ch] text-3xl text-white">¿Listo para transformar su operación?</h2>
             <p className="mt-3 max-w-[44ch] text-white/90">
@@ -16,7 +18,7 @@ export function ClosingCta() {
           <LinkButton href={routes.creditRequest} variant="dark" size="lg" className="shrink-0">
             Solicitar Crédito Ahora
           </LinkButton>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
