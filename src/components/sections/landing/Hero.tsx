@@ -28,7 +28,8 @@ export function Hero() {
               angostas), el segundo baja automáticamente en vez de
               desbordar. No necesitas breakpoint manual para esto. */}
           <div className="mt-8 flex flex-wrap gap-4">
-            <LinkButton href={routes.creditRequest} size="lg">
+            {/* target=_blank: el wizard de solicitud es largo, se abre aparte para no perder la landing */}
+            <LinkButton href={routes.creditRequest} size="lg" target="_blank" rel="noopener noreferrer">
               Solicitar crédito
               <IconArrowRight size={18} aria-hidden="true" />
             </LinkButton>

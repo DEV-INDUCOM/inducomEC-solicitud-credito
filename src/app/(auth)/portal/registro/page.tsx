@@ -53,6 +53,8 @@ export default function RegisterPage() {
           <Link
             href={routes.creditRequest}
             className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-orange-400 hover:text-brand-orange-300"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Iniciar solicitud de crédito
             <IconArrowRight size={14} aria-hidden="true" />

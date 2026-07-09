@@ -15,7 +15,15 @@ export function ClosingCta() {
               INDUCOM.
             </p>
           </div>
-          <LinkButton href={routes.creditRequest} variant="dark" size="lg" className="shrink-0">
+          {/* target=_blank: el wizard de solicitud es largo, se abre aparte para no perder la landing */}
+          <LinkButton
+            href={routes.creditRequest}
+            variant="dark"
+            size="lg"
+            className="shrink-0"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Solicitar Crédito Ahora
           </LinkButton>
         </Reveal>

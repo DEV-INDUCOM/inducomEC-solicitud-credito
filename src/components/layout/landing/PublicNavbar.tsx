@@ -11,7 +11,8 @@ export function PublicNavbar() {
           <LinkButton href={routes.login} variant="outline" size="sm">
             Iniciar sesión
           </LinkButton>
-          <LinkButton href={routes.creditRequest} variant="primary" size="sm">
+          {/* target=_blank: el wizard de solicitud es largo, se abre aparte para no perder la landing */}
+          <LinkButton href={routes.creditRequest} variant="primary" size="sm" target="_blank" rel="noopener noreferrer">
             Solicitar crédito
           </LinkButton>
         </nav>

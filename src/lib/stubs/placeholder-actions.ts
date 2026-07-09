@@ -62,14 +62,3 @@ export async function simulateForgotPassword(): Promise<{ ok: boolean; message: 
     message: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
   };
 }
-
-export async function simulateCreditRequest(): Promise<{ ok: boolean; message: string }> {
-  await wait(NETWORK_DELAY_MS);
-  // TODO: reemplazar por un route handler que guarde en Supabase, suba
-  // adjuntos a Storage privado y notifique por Resend al correo interno.
-  return {
-    ok: true,
-    message:
-      "Solicitud recibida. Nuestro equipo la revisará y se pondrá en contacto por correo.",
-  };
-}

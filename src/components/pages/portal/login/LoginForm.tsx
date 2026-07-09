@@ -93,7 +93,12 @@ export function LoginForm() {
       </p>
       <p className="mt-3 text-center text-sm text-[var(--text-secondary)] leading-normal">
         ¿Aún no has solicitado crédito?{" "}
-        <Link href={routes.creditRequest} className="font-semibold text-[var(--accent)]">
+        <Link
+          href={routes.creditRequest}
+          className="font-semibold text-[var(--accent)]"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Solicitar crédito
         </Link>
       </p>
