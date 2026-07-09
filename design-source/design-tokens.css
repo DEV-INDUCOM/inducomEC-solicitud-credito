@@ -1,0 +1,287 @@
+/* ============================================================================
+   Portal de Clientes INDUCOM — Tokens de diseño (FUENTE DE VERDAD)
+   ----------------------------------------------------------------------------
+   Este archivo es el ÚNICO lugar donde viven los valores reales de diseño:
+   colores, tipografía, espaciados, radios, sombras y roles semánticos.
+
+   Regla de oro: si un color cambia, se cambia aquí y solo aquí.
+
+   Identidad visual actual:
+   - Navy dominante de marca.
+   - Naranja como acento / CTA.
+   - Blanco como fondo principal.
+   - Rojo reservado exclusivamente para errores, peligro o estados rechazados.
+
+   Valores inferidos del sitio visible:
+   - Navy base:   #00005B
+   - Naranja base:#EE6B03
+
+   Reemplazar por los HEX oficiales del manual de marca cuando estén disponibles.
+
+   Si el proyecto usa Tailwind, mapear estas variables en tailwind.config.js
+   bajo theme.extend: colors, fontFamily, fontSize, spacing, borderRadius, boxShadow.
+   Si no, importar este archivo en el CSS global, por ejemplo: app/globals.css.
+   ============================================================================ */
+
+:root {
+  /* ------------------------------------------------------------------------
+     1. MARCA — INDUCOM
+     Navy = color institucional principal.
+     Naranja = acento visual, líneas, iconos destacados y CTAs.
+     ------------------------------------------------------------------------ */
+
+  /* Navy INDUCOM */
+  --brand-navy-50:  #F0F2FF;
+  --brand-navy-100: #DDE2FF;
+  --brand-navy-200: #B9C2FF;
+  --brand-navy-300: #8795FF;
+  --brand-navy-400: #5365F2;
+  --brand-navy-500: #1F31B8;
+  --brand-navy-600: #00005B; /* base / marca */
+  --brand-navy-700: #00004A; /* hover */
+  --brand-navy-800: #000039; /* pressed / header */
+  --brand-navy-900: #000027; /* texto muy oscuro / fondos profundos */
+  --brand-navy-950: #000016;
+
+  /* Naranja INDUCOM */
+  --brand-orange-50:  #FFF4E8;
+  --brand-orange-100: #FFE4C2;
+  --brand-orange-200: #FFC789;
+  --brand-orange-300: #FFA64D;
+  --brand-orange-400: #FB861A;
+  --brand-orange-500: #EE6B03; /* base / acento */
+  --brand-orange-600: #C95502; /* hover */
+  --brand-orange-700: #A64403; /* pressed */
+  --brand-orange-800: #843606;
+  --brand-orange-900: #6B2D08;
+
+  /* ------------------------------------------------------------------------
+     2. NEUTROS — Blanco dominante + escala slate para UI
+     ------------------------------------------------------------------------ */
+  --white: #FFFFFF;
+  --black: #000000;
+
+  --slate-50:  #F8FAFC;
+  --slate-100: #f5f7fa;
+  --slate-200: #E2E8F0;
+  --slate-300: #CBD5E1;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+  --slate-900: #0F172A;
+  --slate-950: #020617;
+
+  /* ------------------------------------------------------------------------
+     3. ESTADOS SEMÁNTICOS
+     El rojo NO es marca. Se reserva para danger: rechazado, error o vencido.
+     Los estados usan pares suaves: fondo tenue + texto oscuro + borde.
+     ------------------------------------------------------------------------ */
+
+  /* info → recibido, información, aviso técnico */
+  --state-info-bg:     #EAF2FF;
+  --state-info-text:   #0B3B75;
+  --state-info-border: #B8D4FF;
+
+  /* warning → en revisión, atención, pendiente crítico */
+  --state-warning-bg:     #FFF7E0;
+  --state-warning-text:   #7A4A00;
+  --state-warning-border: #F7D37A;
+
+  /* success → aprobado, activo, confirmado */
+  --state-success-bg:     #EAF7E8;
+  --state-success-text:   #1F5F2A;
+  --state-success-border: #BFE4BD;
+
+  /* danger → rechazado, vencido, error */
+  --state-danger-bg:     #FDECEC;
+  --state-danger-text:   #8A1F1F;
+  --state-danger-border: #F5B8B8;
+
+  /* neutral → usado, próximamente, pendiente de información */
+  --state-neutral-bg:     #F3F4F6;
+  --state-neutral-text:   #4B5563;
+  --state-neutral-border: #D1D5DB;
+
+  /* ------------------------------------------------------------------------
+     4. ROLES DE SUPERFICIE
+     Estos tokens son los que deben consumir los componentes.
+     Evitar usar directamente --brand-* dentro de componentes salvo excepciones.
+     ------------------------------------------------------------------------ */
+
+  --bg-page:        var(--white);
+  --bg-page-soft:   var(--slate-50);
+  --bg-surface:     var(--white);
+  --bg-surface-alt: var(--slate-100);
+  --bg-medium:      var(--slate-200);
+  --bg-dark:        var(--brand-navy-600);
+  --bg-dark-deep:   var(--brand-navy-900);
+
+  --text-primary:   var(--brand-navy-900);
+  --text-secondary: var(--slate-600);
+  --text-muted:     var(--slate-400);
+  --text-on-dark:   var(--white);
+  --text-accent:    var(--brand-orange-500);
+
+  --border:         var(--slate-200);
+  --border-strong:  var(--slate-300);
+  --border-on-dark: rgba(255, 255, 255, 0.20);
+
+  /* Acciones */
+  --action-primary:             var(--brand-navy-600);
+  --action-primary-hover:       var(--brand-navy-700);
+  --action-primary-pressed:     var(--brand-navy-800);
+  --action-primary-text:        var(--white);
+
+  --action-secondary:           var(--brand-orange-500);
+  --action-secondary-hover:     var(--brand-orange-600);
+  --action-secondary-pressed:   var(--brand-orange-700);
+  --action-secondary-text:      var(--white);
+
+  /* Acentos */
+  --accent:             var(--brand-orange-500);
+  --accent-hover:       var(--brand-orange-600);
+  --accent-soft:        var(--brand-orange-50);
+  --accent-border:      var(--brand-orange-200);
+
+  /* Links */
+  --link:       var(--brand-navy-600);
+  --link-hover: var(--brand-orange-500);
+
+  /* Navegación / header */
+  --nav-bg:          var(--white);
+  --nav-text:        var(--brand-navy-600);
+  --nav-text-hover:  var(--brand-orange-500);
+  --topbar-bg:       var(--brand-navy-600);
+  --topbar-text:     var(--white);
+
+  /* ------------------------------------------------------------------------
+     5. COMPONENTES BASE
+     Tokens prácticos para mantener consistencia sin repetir decisiones.
+     ------------------------------------------------------------------------ */
+
+  --button-height-sm:  2.25rem; /* 36px */
+  --button-height:     2.75rem; /* 44px */
+  --button-height-lg:  3.25rem; /* 52px */
+
+  --input-height:      2.75rem; /* 44px */
+  --card-padding:      var(--space-6);
+  --section-padding-y: var(--space-16); /* 64px, coincide con el py-16 usado en las secciones de landing */
+  --container-max:     75rem; /* 1200px */
+
+  /* ------------------------------------------------------------------------
+     6. TIPOGRAFÍA
+     Cargar desde Google Fonts:
+     Sora 400/500/600/700 · Inter 400/500/600 · JetBrains Mono 400/500
+     ------------------------------------------------------------------------ */
+
+  --font-display: 'Sora', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans:    'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.25rem;   /* 20px */
+  --text-2xl:  1.5rem;    /* 24px */
+  --text-3xl:  1.875rem;  /* 30px */
+  --text-4xl:  2.5rem;    /* 40px */
+  --text-5xl:  3.5rem;    /* 56px */
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --leading-tight:  1.15;
+  --leading-snug:   1.3;
+  --leading-normal: 1.6;
+
+  /* ------------------------------------------------------------------------
+     7. ESPACIADO — base 4px
+     ------------------------------------------------------------------------ */
+
+  --space-1:  0.25rem; /* 4px */
+  --space-2:  0.5rem;  /* 8px */
+  --space-3:  0.75rem; /* 12px */
+  --space-4:  1rem;    /* 16px */
+  --space-5:  1.25rem; /* 20px */
+  --space-6:  1.5rem;  /* 24px */
+  --space-8:  2rem;    /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-20: 5rem;    /* 80px */
+  --space-24: 6rem;    /* 96px */
+
+  /* ------------------------------------------------------------------------
+     8. RADIOS
+     ------------------------------------------------------------------------ */
+
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius:      8px;
+  --radius-md:   10px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* ------------------------------------------------------------------------
+     9. SOMBRAS
+     Sutiles. La identidad se sostiene por contraste navy/blanco/naranja,
+     no por sombras pesadas.
+     ------------------------------------------------------------------------ */
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 91, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 91, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 91, 0.12);
+
+  /* ------------------------------------------------------------------------
+     10. FOCO — accesibilidad
+     El foco usa naranja porque es visible sobre blanco y sobre navy.
+     ------------------------------------------------------------------------ */
+
+  --focus-ring:        0 0 0 3px rgba(238, 107, 3, 0.35);
+  --focus-ring-strong: 0 0 0 4px rgba(238, 107, 3, 0.45);
+  --focus-ring-danger: 0 0 0 3px rgba(220, 38, 38, 0.30);
+}
+
+/* ============================================================================
+   SUPERFICIE: LANDING
+   La landing pública puede usar el naranja como acción principal porque ahí
+   funciona como CTA comercial. El navy sigue siendo el fondo/estructura fuerte.
+   Aplicar: <body data-surface="landing">
+   ============================================================================ */
+
+[data-surface="landing"] {
+  --bg-page:        var(--white);
+  --action-primary:         var(--brand-orange-500);
+  --action-primary-hover:   var(--brand-orange-600);
+  --action-primary-pressed: var(--brand-orange-700);
+  --action-primary-text:    var(--white);
+  --link:                   var(--brand-navy-600);
+  --link-hover:             var(--brand-orange-500);
+}
+
+/* ============================================================================
+   SUPERFICIE: PORTAL
+   En el portal se prioriza claridad operativa: navy para acciones principales,
+   naranja para énfasis, highlights y acciones secundarias.
+   Aplicar: <body data-surface="portal">
+   ============================================================================ */
+
+[data-surface="portal"] {
+  --bg-page:        var(--slate-50);
+  --action-primary:         var(--brand-navy-600);
+  --action-primary-hover:   var(--brand-navy-700);
+  --action-primary-pressed: var(--brand-navy-800);
+  --accent:                 var(--brand-orange-500);
+}
+
+/* ============================================================================
+   MODO OSCURO — fuera de alcance del MVP.
+   La estructura soporta un futuro [data-theme="dark"] reasignando roles de
+   superficie, sin tocar los colores base de marca.
+   ============================================================================ */
