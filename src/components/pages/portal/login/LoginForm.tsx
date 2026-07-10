@@ -8,10 +8,12 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { FormStatus, type FormStatusTone } from "@/components/ui/FormStatus";
 import { loginSchema } from "@/lib/validations/auth";
-import { simulateLogin } from "@/lib/stubs/placeholder-actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/config/site";
+import { useRouter } from "next/navigation";
 
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -34,8 +36,31 @@ export function LoginForm() {
     }
 
     setStatus({ tone: "loading", message: "Verificando credenciales…" });
-    const response = await simulateLogin();
-    setStatus({ tone: response.ok ? "success" : "info", message: response.message });
+    const supabase = createSupabaseBrowserClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: result.data.email,
+      password: result.data.password,
+    });
+
+    if (error || !data.user) {
+      setStatus({ tone: "error", message: "Correo o contraseña incorrectos." });
+      return;
+    }
+
+    const { data: perfil, error: perfilError } = await supabase
+      .from("perfiles")
+      .select("id")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (perfilError || !perfil) {
+      await supabase.auth.signOut();
+      setStatus({ tone: "error", message: "Tu cuenta no tiene acceso al portal. Contacta a INDUCOM." });
+      return;
+    }
+
+    router.replace(routes.dashboard);
+    router.refresh();
   }
 
   return (

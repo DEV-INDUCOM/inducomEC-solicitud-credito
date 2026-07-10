@@ -7,12 +7,14 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { FormStatus, type FormStatusTone } from "@/components/ui/FormStatus";
 import { invitationCodeSchema, registerAccountSchema } from "@/lib/validations/auth";
-import { simulateRegisterAccount, simulateValidateInvitationCode } from "@/lib/stubs/placeholder-actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/config/site";
+import { useRouter } from "next/navigation";
 
 type Step = "code" | "account";
 
 export function RegisterForm() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("code");
   const [code, setCode] = useState("");
   const [fullName, setFullName] = useState("");
@@ -33,14 +35,10 @@ export function RegisterForm() {
       return;
     }
 
-    setStatus({ tone: "loading", message: "Validando código…" });
-    const response = await simulateValidateInvitationCode(result.data.code);
-    setStatus({ tone: response.ok ? "success" : "error", message: response.message });
-
-    if (response.ok) {
-      setStep("account");
-      setStatus(null);
-    }
+    // El código se consume solo al crear la cuenta para no gastarlo antes.
+    setCode(result.data.code);
+    setStep("account");
+    setStatus(null);
   }
 
   async function handleCreateAccount(event: FormEvent<HTMLFormElement>) {
@@ -59,8 +57,38 @@ export function RegisterForm() {
     }
 
     setStatus({ tone: "loading", message: "Creando cuenta…" });
-    const response = await simulateRegisterAccount();
-    setStatus({ tone: response.ok ? "success" : "info", message: response.message });
+    const supabase = createSupabaseBrowserClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: result.data.email,
+      password: result.data.password,
+      options: { data: { full_name: result.data.fullName } },
+    });
+
+    if (error || !data.user) {
+      setStatus({ tone: "error", message: "No pudimos crear tu cuenta. Revisa los datos e intenta de nuevo." });
+      return;
+    }
+
+    if (!data.session) {
+      setStatus({
+        tone: "error",
+        message: "Confirma tu correo y luego contacta a INDUCOM para completar el registro.",
+      });
+      return;
+    }
+
+    const { error: codigoError } = await supabase.rpc("consumir_codigo_invitacion", { p_codigo: code });
+    if (codigoError) {
+      await supabase.auth.signOut();
+      setStatus({
+        tone: "error",
+        message: "No pudimos validar el código de invitación. Solicita un código nuevo a INDUCOM.",
+      });
+      return;
+    }
+
+    router.replace(routes.dashboard);
+    router.refresh();
   }
 
   if (step === "account") {

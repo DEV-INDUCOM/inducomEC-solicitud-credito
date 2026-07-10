@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/ui/Logo";
-import { Button } from "@/components/ui/Button";
 import { routes } from "@/lib/config/site";
+import { LogoutButton } from "./LogoutButton";
 
 export function PortalShell({ children }: { children: ReactNode }) {
   return (
@@ -23,9 +23,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
             >
               PayPal
             </Link>
-            <Button variant="outline" size="sm">
-              Cerrar sesión
-            </Button>
+            <LogoutButton />
           </nav>
         </div>
       </header>

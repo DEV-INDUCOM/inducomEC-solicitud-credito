@@ -8,8 +8,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 /**
  * Recibe la solicitud de crédito pública, la revalida en servidor (nunca
  * confiar solo en la validación del navegador) y la guarda directo en
- * Supabase: adjuntos a un bucket privado de Storage, datos a la tabla
- * `solicitudes_credito`, y notifica al correo interno por Resend.
+ * Supabase: adjuntos a un bucket privado de Storage, metadata en
+ * `documentos_credito`, datos en `solicitudes_credito`, y notificación por Resend.
  *
  * Medidas de seguridad de este endpoint:
  * - Usa `service_role` (createSupabaseAdminClient) solo aquí, en servidor:
@@ -28,11 +28,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 const MAX_FILE_SIZE_MB = 10;
 const ALLOWED_FILE_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 const REQUISITO_KEYS = ["ruc", "cedulaColor", "nombramientos", "certBancarios", "certComerciales"];
-const ADJUNTOS_BUCKET = "solicitudes-adjuntos";
+const ADJUNTOS_BUCKET = "documentos-credito";
+const MAX_DATA_LENGTH = 250_000;
 
 const emailOk = (v: unknown) => typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const idOk = (v: unknown) => typeof v === "string" && /^\d{10}$|^\d{13}$/.test(v.trim());
 const nonEmpty = (v: unknown) => typeof v === "string" && v.trim().length > 0;
+const safeFileName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "archivo";
 
 function genericError(status: number, message: string) {
   return NextResponse.json({ ok: false, message }, { status });
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
   }
 
   const rawData = form.get("data");
-  if (typeof rawData !== "string") {
+  if (typeof rawData !== "string" || rawData.length > MAX_DATA_LENGTH) {
     return genericError(400, "Solicitud inválida.");
   }
 
@@ -82,13 +84,21 @@ export async function POST(request: Request) {
   if (!idOk(datos.cedula)) errors.push("cedula");
   if (!emailOk(datos.correo)) errors.push("correo");
   if (!nonEmpty(actividad.nombreEmpresa)) errors.push("nombreEmpresa");
+  if (!nonEmpty(actividad.actividadNegocio)) errors.push("actividadNegocio");
   if (!nonEmpty(actividad.direccion)) errors.push("direccion");
   if (!nonEmpty(actividad.ciudad)) errors.push("ciudad");
+  if (!nonEmpty(actividad.telefono) && !nonEmpty(actividad.celular)) errors.push("telefono");
+  if (data.tipoCliente === "juridica" && !nonEmpty(datos.razonSocial)) errors.push("razonSocial");
+  if (data.financiamiento && (data.financiamiento as Record<string, unknown>).tieneCotizacion === "si" &&
+      !nonEmpty((data.financiamiento as Record<string, unknown>).numeroCotizacion)) {
+    errors.push("numeroCotizacion");
+  }
   if (!refsBancarias.some((r) => nonEmpty(r?.institucion) && nonEmpty(r?.noCta))) {
     errors.push("refsBancarias");
   }
   if (!firmas.some((f) => nonEmpty(f?.nombres) && nonEmpty(f?.cargo))) errors.push("firmas");
   if (condiciones.acepta !== true) errors.push("acepta");
+  if (!nonEmpty(condiciones.ciudad)) errors.push("ciudadFirma");
   if (!nonEmpty(condiciones.firmaDataUrl)) errors.push("firma");
 
   if (errors.length > 0) {
@@ -110,34 +120,79 @@ export async function POST(request: Request) {
     files.push({ key, file });
   }
 
-  const folio = `SOL-${String(Date.now()).slice(-6)}`;
   const supabase = createSupabaseAdminClient();
 
-  // Sube cada adjunto al bucket privado antes de insertar la fila, así el
-  // registro en la tabla ya nace con las rutas de Storage completas.
+  const { data: pais, error: paisError } = await supabase
+    .from("paises")
+    .select("id")
+    .eq("codigo", "EC")
+    .single();
+
+  if (paisError || !pais) {
+    console.error("No se encontró el catálogo de países o Ecuador:", paisError);
+    return genericError(500, "No pudimos procesar tu solicitud. Intenta más tarde.");
+  }
+
+  const nombreSolicitante = `${String(datos.nombres).trim()} ${String(datos.apellidos).trim()}`.trim();
+  const telefono = nonEmpty(actividad.telefono) ? String(actividad.telefono).trim() : String(actividad.celular).trim();
+  const { data: solicitud, error: insertError } = await supabase
+    .from("solicitudes_credito")
+    .insert({
+      nombre_solicitante: nombreSolicitante,
+      email_solicitante: String(datos.correo).trim().toLowerCase(),
+      telefono_solicitante: telefono,
+      identificacion: String(datos.cedula).trim(),
+      pais_id: pais.id,
+      datos_adicionales: data,
+      consentimiento_aceptado: true,
+      consentimiento_fecha: new Date().toISOString(),
+      nombre_empresa: String(actividad.nombreEmpresa).trim(),
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !solicitud) {
+    console.error("Fallo al guardar solicitud en Supabase:", insertError);
+    return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
+  }
+
+  const folio = `SOL-${solicitud.id.slice(0, 8).toUpperCase()}`;
+  const uploadedPaths: string[] = [];
+
+  // La solicitud ya existe para obtener un UUID estable. Si falla una subida
+  // o la metadata, se eliminan los archivos y la fila creados en este intento.
   const adjuntos: Record<string, string> = {};
   for (const { key, file } of files) {
-    const path = `${folio}/${key}-${file.name}`;
+    const path = `${solicitud.id}/${crypto.randomUUID()}-${key}-${safeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from(ADJUNTOS_BUCKET)
       .upload(path, file, { contentType: file.type, upsert: false });
 
     if (uploadError) {
       console.error(`Fallo al subir adjunto "${key}" de la solicitud ${folio}:`, uploadError);
+      await Promise.all(uploadedPaths.map((uploadedPath) => supabase.storage.from(ADJUNTOS_BUCKET).remove([uploadedPath])));
+      await supabase.from("solicitudes_credito").delete().eq("id", solicitud.id);
       return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
     }
+    uploadedPaths.push(path);
     adjuntos[key] = path;
   }
 
-  const { error: insertError } = await supabase.from("solicitudes_credito").insert({
-    folio,
-    tipo_cliente: data.tipoCliente,
-    data,
-    adjuntos,
-  });
+  const documentos = files.map(({ key, file }) => ({
+    solicitud_id: solicitud.id,
+    storage_path: adjuntos[key],
+    nombre_archivo: safeFileName(file.name),
+    tipo_mime: file.type,
+    tamano_bytes: file.size,
+  }));
+  const { error: documentosError } = documentos.length
+    ? await supabase.from("documentos_credito").insert(documentos)
+    : { error: null };
 
-  if (insertError) {
-    console.error(`Fallo al guardar la solicitud ${folio} en Supabase:`, insertError);
+  if (documentosError) {
+    console.error(`Fallo al guardar documentos de la solicitud ${folio}:`, documentosError);
+    await Promise.all(uploadedPaths.map((uploadedPath) => supabase.storage.from(ADJUNTOS_BUCKET).remove([uploadedPath])));
+    await supabase.from("solicitudes_credito").delete().eq("id", solicitud.id);
     return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
   }
 

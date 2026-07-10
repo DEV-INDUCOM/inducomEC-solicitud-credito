@@ -35,6 +35,7 @@ export const routes = {
   login: "/portal/login",
   register: "/portal/registro",
   forgotPassword: "/portal/recuperar-contrasena",
+  updatePassword: "/portal/actualizar-contrasena",
   dashboard: "/portal/dashboard",
   paypal: "/portal/paypal",
 };

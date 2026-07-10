@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { FormStatus, type FormStatusTone } from "@/components/ui/FormStatus";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
-import { simulateForgotPassword } from "@/lib/stubs/placeholder-actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/config/site";
 
 export function ForgotPasswordForm() {
@@ -26,8 +26,19 @@ export function ForgotPasswordForm() {
     }
 
     setStatus({ tone: "loading", message: "Enviando…" });
-    const response = await simulateForgotPassword();
-    setStatus({ tone: response.ok ? "success" : "error", message: response.message });
+    const { error } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(result.data.email, {
+      redirectTo: `${window.location.origin}${routes.updatePassword}`,
+    });
+
+    if (error) {
+      setStatus({ tone: "error", message: "No pudimos enviar las instrucciones. Intenta nuevamente." });
+      return;
+    }
+
+    setStatus({
+      tone: "success",
+      message: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+    });
   }
 
   return (
