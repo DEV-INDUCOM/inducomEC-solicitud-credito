@@ -178,7 +178,7 @@
   }
 
   ::selection {
-    background: var(--accent-soft);
+    background: var(--brand-orange-200);
     color: var(--text-primary);
   }
 }

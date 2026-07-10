@@ -9,7 +9,6 @@ import { publicEnv } from "@/lib/config/env";
  * navegador. Este es el cliente que deben usar login, registro y cualquier
  * lectura/escritura autenticada en el servidor.
  *
- * Stub: no hay proyecto Supabase conectado todavía.
  */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();

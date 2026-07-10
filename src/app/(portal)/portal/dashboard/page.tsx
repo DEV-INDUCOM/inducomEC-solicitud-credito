@@ -1,95 +1,88 @@
 import type { Metadata } from "next";
-import { IconBrandPaypal, IconFileInvoice, IconReceipt2 } from "@tabler/icons-react";
 import { Card, IconTile } from "@/components/ui/Card";
-import { Alert } from "@/components/ui/Alert";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { BalanceCard } from "@/components/portal/BalanceCard";
+import { BenefitCard } from "@/components/portal/BenefitCard";
+import { CompanySummary } from "@/components/portal/CompanySummary";
+import { PaymentHistory } from "@/components/portal/PaymentHistory";
+import { StatCard } from "@/components/portal/StatCard";
+import { formatFecha } from "@/lib/portal/format";
+import { portalNavItems } from "@/lib/portal/nav";
+import { getPagos, getPortalContext, getSaldo } from "@/lib/portal/queries";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-const modules = [
-  {
-    icon: IconBrandPaypal,
-    title: "PayPal",
-    description: "Saldo derivado de pagos, historial e incentivo activo.",
-  },
-  {
-    icon: IconReceipt2,
-    title: "Facturas y pagos",
-    description: "Consulta de facturación y estados de cuenta por empresa.",
-  },
-  {
-    icon: IconFileInvoice,
-    title: "Cotizaciones",
-    description: "Solicitud y seguimiento de cotizaciones comerciales.",
-  },
-];
+const modulosFuturos = portalNavItems.filter((item) => item.href === null);
 
 export default async function DashboardPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: perfil } = user
-    ? await supabase.from("perfiles").select("empresa_id").eq("id", user.id).maybeSingle()
-    : { data: null };
-  const { data: empresa } = perfil
-    ? await supabase.from("empresas").select("nombre").eq("id", perfil.empresa_id).maybeSingle()
-    : { data: null };
-  const { data: saldoRow } = perfil
-    ? await supabase.from("saldo_por_empresa").select("saldo").eq("empresa_id", perfil.empresa_id).maybeSingle()
-    : { data: null };
+  const context = await getPortalContext();
+  // El layout del portal ya filtra sin-sesión / sin-perfil / error antes de
+  // renderizar esta página; esta rama es solo defensa de tipos.
+  if (!context.ok) return null;
 
-  const saldo = Number(saldoRow?.saldo ?? 0);
-  const saldoFormateado = new Intl.NumberFormat("es-EC", {
-    style: "currency",
-    currency: "USD",
-  }).format(Number.isFinite(saldo) ? saldo : 0);
+  const { perfil, empresa } = context.data;
+  const [saldoResult, pagosResult] = await Promise.all([getSaldo(empresa.id), getPagos(empresa.id)]);
 
   return (
-    <>
-      <div className="mb-8">
-        <h1 className="text-3xl">Bienvenido al portal</h1>
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl">Bienvenido, {empresa.nombre}</h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Esta es una vista de estructura: los módulos se activarán a medida que se conecten al
-          backend de Supabase.
+          Consulta tu saldo, el historial de pagos y el incentivo activo de tu empresa.
         </p>
       </div>
 
-      <Alert variant="info" title="Vista en construcción">
-        Este dashboard todavía no tiene datos reales ni autenticación conectada. Es únicamente la
-        estructura visual del portal privado.
-      </Alert>
+      {saldoResult.ok && pagosResult.ok ? (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          <BalanceCard
+            saldo={saldoResult.saldo}
+            ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null}
+          />
+          <StatCard
+            label="Pagos registrados"
+            value={pagosResult.pagos.length}
+            hint={
+              pagosResult.pagos[0]
+                ? `Último registrado el ${formatFecha(pagosResult.pagos[0].fecha)}`
+                : "Sin pagos aún"
+            }
+          />
+          <BenefitCard incentivo={empresa.incentivoActivo} />
+        </div>
+      ) : (
+        <ErrorState title="No pudimos cargar tu saldo ni tus pagos" />
+      )}
 
-      <div className="mt-8 grid grid-cols-2 gap-5 max-[560px]:grid-cols-1">
-        <Card>
-          <p className="font-mono text-xs font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase">
-            Empresa
-          </p>
-          <p className="mt-3 text-xl font-semibold">{empresa?.nombre ?? "Empresa no disponible"}</p>
-        </Card>
-        <Card>
-          <p className="font-mono text-xs font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase">
-            Saldo registrado
-          </p>
-          <p className="mt-3 text-xl font-semibold">{saldoFormateado}</p>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Calculado desde los pagos registrados.</p>
-        </Card>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[2fr_1fr]">
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Últimos movimientos</h2>
+          {pagosResult.ok ? (
+            <PaymentHistory pagos={pagosResult.pagos.slice(0, 5)} />
+          ) : (
+            <ErrorState title="No pudimos cargar tus pagos" />
+          )}
+        </section>
+        <CompanySummary empresa={empresa} perfil={perfil} />
       </div>
 
-      <div className="mt-8 grid grid-cols-3 gap-5 max-[860px]:grid-cols-2 max-[560px]:grid-cols-1">
-        {modules.map(({ icon: Icon, title, description }) => (
-          <Card key={title}>
-            <IconTile>
-              <Icon size={22} stroke={1.75} />
-            </IconTile>
-            <p className="mt-4 text-base font-semibold">{title}</p>
-            <p className="mt-2 text-sm text-[var(--text-secondary)] leading-normal">{description}</p>
-            <span className="mt-4 inline-flex rounded-full border border-[color:var(--state-neutral-border)] bg-[var(--state-neutral-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.04em] text-[var(--state-neutral-text)]">
-              Próximamente
-            </span>
-          </Card>
-        ))}
-      </div>
-    </>
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Próximamente</h2>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {modulosFuturos.map(({ label, icon: Icon }) => (
+            <Card key={label} className="flex flex-col gap-3">
+              <IconTile>
+                <Icon size={22} stroke={1.75} />
+              </IconTile>
+              <p className="text-base font-semibold text-[var(--text-primary)]">{label}</p>
+              <span className="inline-flex w-fit rounded-full border border-dashed border-[color:var(--state-neutral-border)] bg-[var(--state-neutral-bg)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.04em] text-[var(--state-neutral-text)]">
+                Próximamente
+              </span>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
