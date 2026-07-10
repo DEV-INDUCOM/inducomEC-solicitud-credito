@@ -138,7 +138,80 @@ export const STEP_SHORT_LABELS = [
   "Revisión",
 ] as const;
 
+
+// Version 2 of the steps
+export const STEP_SHORT_LABELS2 = [
+  "Inicio",
+  "Tipo de cliente",
+  "Datos",
+
+] as const;
+
+// Títulos largos del encabezado del Stepper para la versión 2 (3 pasos).
+export const STEP_TITLES2 = [
+  "Tipo de solicitud",
+  "Tipo de cliente",
+  "Datos y documentos",
+] as const;
+
 export const TOTAL_STEPS = STEP_TITLES.length;
+
+// ---- Wizard v2 (steps-version2): flujo reducido a 3 pasos ----
+export type TipoSolicitud = "" | "nueva" | "apertura";
+
+export interface DatosStep2 {
+  // Datos del solicitante: la tabla solicitudes_credito exige nombre y correo
+  // (columnas NOT NULL), por eso v2 también los recolecta.
+  nombreSolicitante: string;
+  emailSolicitante: string;
+  rucSolicitante: string;
+  // Solo aplica cuando tipoSolicitud === "nueva"; en apertura de línea no hay cotización.
+  numeroCotizacion: string;
+  solicitudFirmada: File | null;
+  cedula: File | null;
+  rucArchivo: File | null;
+  certBancario: File | null;
+  refsComerciales: File | null;
+  nombramiento: File | null;
+  ordenCompra: File | null;
+  // El envío del formulario exige aceptar el consentimiento (constraint en BD).
+  aceptaConsentimiento: boolean;
+}
+
+export interface WizardState2 {
+  step: number;
+  submitted: boolean;
+  tipoSolicitud: TipoSolicitud;
+  tipoCliente: TipoCliente;
+  datos: DatosStep2;
+  errors: FormErrors;
+}
+
+export const TOTAL_STEPS2 = STEP_SHORT_LABELS2.length;
+
+export function blankState2(): WizardState2 {
+  return {
+    step: 0,
+    submitted: false,
+    tipoSolicitud: "",
+    tipoCliente: "",
+    datos: {
+      nombreSolicitante: "",
+      emailSolicitante: "",
+      rucSolicitante: "",
+      numeroCotizacion: "",
+      solicitudFirmada: null,
+      cedula: null,
+      rucArchivo: null,
+      certBancario: null,
+      refsComerciales: null,
+      nombramiento: null,
+      ordenCompra: null,
+      aceptaConsentimiento: false,
+    },
+    errors: {},
+  };
+}
 
 export function blankState(): WizardState {
   return {

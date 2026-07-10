@@ -11,6 +11,7 @@ export function PortalSidebar() {
           imageClassName="h-9 w-auto"
           width={290}
           height={100}
+          with_href= {false}
         />
       </div>
       <PortalNavList />

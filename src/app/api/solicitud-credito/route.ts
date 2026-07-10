@@ -27,7 +27,18 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const MAX_FILE_SIZE_MB = 10;
 const ALLOWED_FILE_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
-const REQUISITO_KEYS = ["ruc", "cedulaColor", "nombramientos", "certBancarios", "certComerciales"];
+// v1 (steps-version1): claves de archivos del formulario original.
+// const REQUISITO_KEYS = ["ruc", "cedulaColor", "nombramientos", "certBancarios", "certComerciales"];
+// v2 (steps-version2): claves de archivos del formulario nuevo. "ordenCompra" es opcional.
+const REQUISITO_KEYS = [
+  "solicitudFirmada",
+  "cedula",
+  "ruc",
+  "certBancario",
+  "refsComerciales",
+  "nombramiento",
+  "ordenCompra",
+];
 const ADJUNTOS_BUCKET = "documentos-credito";
 const MAX_DATA_LENGTH = 250_000;
 
@@ -71,35 +82,52 @@ export async function POST(request: Request) {
     return genericError(400, "Solicitud inválida.");
   }
 
-  const datos = (data.datos ?? {}) as Record<string, unknown>;
-  const actividad = (data.actividad ?? {}) as Record<string, unknown>;
-  const condiciones = (data.condiciones ?? {}) as Record<string, unknown>;
-  const refsBancarias = Array.isArray(data.refsBancarias) ? data.refsBancarias : [];
-  const firmas = Array.isArray(data.firmas) ? data.firmas : [];
+  // ===== Validación v1 (steps-version1): formulario completo de 8 pasos =====
+  // Se deja comentada para poder volver a la v1 sin reescribirla.
+  // const datos = (data.datos ?? {}) as Record<string, unknown>;
+  // const actividad = (data.actividad ?? {}) as Record<string, unknown>;
+  // const condiciones = (data.condiciones ?? {}) as Record<string, unknown>;
+  // const refsBancarias = Array.isArray(data.refsBancarias) ? data.refsBancarias : [];
+  // const firmas = Array.isArray(data.firmas) ? data.firmas : [];
+  //
+  // const errors: string[] = [];
+  // if (data.tipoCliente !== "natural" && data.tipoCliente !== "juridica") errors.push("tipoCliente");
+  // if (!nonEmpty(datos.apellidos)) errors.push("apellidos");
+  // if (!nonEmpty(datos.nombres)) errors.push("nombres");
+  // if (!idOk(datos.cedula)) errors.push("cedula");
+  // if (!emailOk(datos.correo)) errors.push("correo");
+  // if (!nonEmpty(actividad.nombreEmpresa)) errors.push("nombreEmpresa");
+  // if (!nonEmpty(actividad.actividadNegocio)) errors.push("actividadNegocio");
+  // if (!nonEmpty(actividad.direccion)) errors.push("direccion");
+  // if (!nonEmpty(actividad.ciudad)) errors.push("ciudad");
+  // if (!nonEmpty(actividad.telefono) && !nonEmpty(actividad.celular)) errors.push("telefono");
+  // if (data.tipoCliente === "juridica" && !nonEmpty(datos.razonSocial)) errors.push("razonSocial");
+  // if (data.financiamiento && (data.financiamiento as Record<string, unknown>).tieneCotizacion === "si" &&
+  //     !nonEmpty((data.financiamiento as Record<string, unknown>).numeroCotizacion)) {
+  //   errors.push("numeroCotizacion");
+  // }
+  // if (!refsBancarias.some((r) => nonEmpty(r?.institucion) && nonEmpty(r?.noCta))) {
+  //   errors.push("refsBancarias");
+  // }
+  // if (!firmas.some((f) => nonEmpty(f?.nombres) && nonEmpty(f?.cargo))) errors.push("firmas");
+  // if (condiciones.acepta !== true) errors.push("acepta");
+  // if (!nonEmpty(condiciones.ciudad)) errors.push("ciudadFirma");
+  // if (!nonEmpty(condiciones.firmaDataUrl)) errors.push("firma");
+  //
+  // if (errors.length > 0) {
+  //   return genericError(400, "Faltan datos requeridos o son inválidos.");
+  // }
 
+  // ===== Validación v2 (steps-version2): formulario reducido de 3 pasos =====
   const errors: string[] = [];
+  if (data.tipoSolicitud !== "nueva" && data.tipoSolicitud !== "apertura") errors.push("tipoSolicitud");
   if (data.tipoCliente !== "natural" && data.tipoCliente !== "juridica") errors.push("tipoCliente");
-  if (!nonEmpty(datos.apellidos)) errors.push("apellidos");
-  if (!nonEmpty(datos.nombres)) errors.push("nombres");
-  if (!idOk(datos.cedula)) errors.push("cedula");
-  if (!emailOk(datos.correo)) errors.push("correo");
-  if (!nonEmpty(actividad.nombreEmpresa)) errors.push("nombreEmpresa");
-  if (!nonEmpty(actividad.actividadNegocio)) errors.push("actividadNegocio");
-  if (!nonEmpty(actividad.direccion)) errors.push("direccion");
-  if (!nonEmpty(actividad.ciudad)) errors.push("ciudad");
-  if (!nonEmpty(actividad.telefono) && !nonEmpty(actividad.celular)) errors.push("telefono");
-  if (data.tipoCliente === "juridica" && !nonEmpty(datos.razonSocial)) errors.push("razonSocial");
-  if (data.financiamiento && (data.financiamiento as Record<string, unknown>).tieneCotizacion === "si" &&
-      !nonEmpty((data.financiamiento as Record<string, unknown>).numeroCotizacion)) {
-    errors.push("numeroCotizacion");
-  }
-  if (!refsBancarias.some((r) => nonEmpty(r?.institucion) && nonEmpty(r?.noCta))) {
-    errors.push("refsBancarias");
-  }
-  if (!firmas.some((f) => nonEmpty(f?.nombres) && nonEmpty(f?.cargo))) errors.push("firmas");
-  if (condiciones.acepta !== true) errors.push("acepta");
-  if (!nonEmpty(condiciones.ciudad)) errors.push("ciudadFirma");
-  if (!nonEmpty(condiciones.firmaDataUrl)) errors.push("firma");
+  if (!nonEmpty(data.nombreSolicitante)) errors.push("nombreSolicitante");
+  if (!emailOk(data.emailSolicitante)) errors.push("emailSolicitante");
+  if (!nonEmpty(data.rucSolicitante)) errors.push("rucSolicitante");
+  // La cotización solo se exige en "nueva solicitud"; en apertura de línea no aplica.
+  if (data.tipoSolicitud === "nueva" && !nonEmpty(data.numeroCotizacion)) errors.push("numeroCotizacion");
+  if (data.aceptaConsentimiento !== true) errors.push("aceptaConsentimiento");
 
   if (errors.length > 0) {
     return genericError(400, "Faltan datos requeridos o son inválidos.");
@@ -133,20 +161,41 @@ export async function POST(request: Request) {
     return genericError(500, "No pudimos procesar tu solicitud. Intenta más tarde.");
   }
 
-  const nombreSolicitante = `${String(datos.nombres).trim()} ${String(datos.apellidos).trim()}`.trim();
-  const telefono = nonEmpty(actividad.telefono) ? String(actividad.telefono).trim() : String(actividad.celular).trim();
+  // ===== Inserción v1 (steps-version1) — comentada para poder restaurarla =====
+  // const nombreSolicitante = `${String(datos.nombres).trim()} ${String(datos.apellidos).trim()}`.trim();
+  // const telefono = nonEmpty(actividad.telefono) ? String(actividad.telefono).trim() : String(actividad.celular).trim();
+  // const { data: solicitud, error: insertError } = await supabase
+  //   .from("solicitudes_credito")
+  //   .insert({
+  //     nombre_solicitante: nombreSolicitante,
+  //     email_solicitante: String(datos.correo).trim().toLowerCase(),
+  //     telefono_solicitante: telefono,
+  //     identificacion: String(datos.cedula).trim(),
+  //     pais_id: pais.id,
+  //     datos_adicionales: data,
+  //     consentimiento_aceptado: true,
+  //     consentimiento_fecha: new Date().toISOString(),
+  //     nombre_empresa: String(actividad.nombreEmpresa).trim(),
+  //   })
+  //   .select("id")
+  //   .single();
+
+  // ===== Inserción v2 (steps-version2) =====
+  // v2 no captura teléfono ni empresa (columnas nullable), así que van null.
+  // identificacion se mapea desde el RUC del solicitante.
+  const nombreSolicitante = String(data.nombreSolicitante).trim();
   const { data: solicitud, error: insertError } = await supabase
     .from("solicitudes_credito")
     .insert({
       nombre_solicitante: nombreSolicitante,
-      email_solicitante: String(datos.correo).trim().toLowerCase(),
-      telefono_solicitante: telefono,
-      identificacion: String(datos.cedula).trim(),
+      email_solicitante: String(data.emailSolicitante).trim().toLowerCase(),
+      telefono_solicitante: null,
+      identificacion: String(data.rucSolicitante).trim(),
       pais_id: pais.id,
       datos_adicionales: data,
       consentimiento_aceptado: true,
       consentimiento_fecha: new Date().toISOString(),
-      nombre_empresa: String(actividad.nombreEmpresa).trim(),
+      nombre_empresa: null,
     })
     .select("id")
     .single();
@@ -205,7 +254,9 @@ export async function POST(request: Request) {
         from: "Portal INDUCOM <notificaciones@inducom.com>",
         to: serverEnv.internalNotificationEmail,
         subject: `Nueva solicitud de crédito — ${folio}`,
-        text: `Se recibió una nueva solicitud de crédito.\n\nFolio: ${folio}\nTipo de cliente: ${String(data.tipoCliente)}\nNombre: ${String(datos.nombres ?? "")} ${String(datos.apellidos ?? "")}\nCorreo: ${String(datos.correo ?? "")}\nEmpresa: ${String(actividad.nombreEmpresa ?? "")}`,
+        // v1: text: `...\nNombre: ${String(datos.nombres ?? "")} ${String(datos.apellidos ?? "")}\nCorreo: ${String(datos.correo ?? "")}\nEmpresa: ${String(actividad.nombreEmpresa ?? "")}`,
+        // v2: usa los campos del formulario reducido (tipo de solicitud, nombre, correo, RUC).
+        text: `Se recibió una nueva solicitud de crédito.\n\nFolio: ${folio}\nTipo de solicitud: ${String(data.tipoSolicitud)}\nTipo de cliente: ${String(data.tipoCliente)}\nNombre: ${String(data.nombreSolicitante ?? "")}\nCorreo: ${String(data.emailSolicitante ?? "")}\nRUC: ${String(data.rucSolicitante ?? "")}`,
       });
     } catch (error) {
       console.error(`Fallo al enviar notificación de la solicitud ${folio}:`, error);

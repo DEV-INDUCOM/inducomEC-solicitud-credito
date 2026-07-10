@@ -84,6 +84,111 @@ el código).
 
 ---
 
+## Sesión — 2026-07-10
+
+**Tema principal: la solicitud de crédito ahora tiene DOS versiones conviviendo en el
+repo, y v2 es la que está activa.**
+
+Nos pidieron rehacer el formulario de solicitud de crédito. En vez de borrar la versión
+original, se montó una segunda versión en paralelo, de modo que se puede volver a la
+primera cuando se quiera cambiando **una sola línea**. Esto es clave para no perder el
+trabajo de la v1.
+
+### Qué es cada versión
+
+- **v1 (original):** wizard de **8 pasos** (Datos personales → Actividad económica →
+  Referencias → Estado financiero → Financiamiento → Requisitos → Firmas → Condiciones).
+  Vive en:
+  - `CreditRequestForm.tsx`
+  - `steps-version1/` (los 8 archivos `Step0Datos.tsx` … `Step7Condiciones.tsx`)
+  - En `validation.ts`: la función `validateStep`
+  - En `types.ts`: `WizardState`, `blankState`, `TOTAL_STEPS`, `STEP_TITLES`,
+    `STEP_SHORT_LABELS` y todos los tipos v1 (`DatosPersonales`, `ActividadEconomica`,
+    `Financiamiento`, etc.)
+
+- **v2 (nueva, ACTIVA hoy):** wizard reducido de **3 pasos**:
+  1. **Inicio** — Nueva solicitud de crédito / Apertura de línea de crédito.
+  2. **Tipo de cliente** — Persona Natural / Jurídica.
+  3. **Datos y documentos** — nombre, correo, RUC, número de cotización (este campo
+     **solo se muestra en "Nueva solicitud"**, se oculta en "Apertura de línea"), los 7
+     documentos a adjuntar, y el checkbox de consentimiento.
+  Vive en:
+  - `CreditRequestForm2.tsx`
+  - `steps-version2/` (`Step0TwoOptions.tsx`, `Step1TipoCliente.tsx`, `Step2Datos.tsx`)
+  - En `validation.ts`: la función `validateStep2`
+  - En `types.ts`: `WizardState2`, `blankState2`, `TOTAL_STEPS2`, `STEP_TITLES2`,
+    `STEP_SHORT_LABELS2`, `TipoSolicitud`, `DatosStep2`
+
+### Cómo está conectado hoy (v2 activa)
+
+Solo tres archivos deciden qué versión corre. En cada uno, el código de v1 quedó
+**comentado** (no borrado) y el de v2 activo:
+
+1. **`src/app/(public)/solicitud-credito/page.tsx`** — renderiza `<CreditRequestForm2 />`.
+   La línea `<CreditRequestForm />` (v1) está comentada justo debajo.
+2. **`src/app/api/solicitud-credito/route.ts`** — el endpoint valida, inserta y notifica
+   con los campos de v2. Los bloques de v1 (validación, inserción, notificación y las
+   claves de archivo) están comentados con la etiqueta `v1`.
+3. **`Stepper.tsx`** — el encabezado, el título, la barra de progreso y las "pills"
+   usan las constantes de v2. Las de v1 están comentadas.
+
+### CÓMO REVERTIR a la v1 (paso a paso)
+
+Para volver a la versión original de 8 pasos:
+
+1. En **`src/app/(public)/solicitud-credito/page.tsx`**: cambiar el `return` para que
+   use `<CreditRequestForm />` en vez de `<CreditRequestForm2 />` (descomentar la línea
+   de v1 y comentar la de v2). **Con esto la UI ya vuelve a la v1.**
+2. En **`src/app/api/solicitud-credito/route.ts`**: comentar los bloques marcados como
+   `v2` y descomentar los marcados como `v1` (validación, inserción, notificación y la
+   constante `REQUISITO_KEYS`). Esto es necesario porque el endpoint es compartido: la
+   v1 y la v2 mandan campos distintos.
+3. En **`Stepper.tsx`**: descomentar el bloque de v1 (encabezado/progreso/pills con
+   `TOTAL_STEPS`, `STEP_TITLES`, `STEP_SHORT_LABELS`) y comentar el de v2.
+
+No hace falta tocar `types.ts` ni `validation.ts` para revertir: ambas versiones de los
+tipos y validaciones conviven ahí sin estorbarse.
+
+### AVISO PARA QUIEN LEA ESTO (no tocar de más)
+
+- **NO borres `CreditRequestForm.tsx` ni la carpeta `steps-version1/`.** Son el respaldo
+  íntegro de la v1. Aunque hoy no se rendericen, siguen siendo código válido y son lo
+  que permite volver a la v1 con un cambio mínimo.
+- **NO comentes ni borres los tipos/funciones v1 de `types.ts` y `validation.ts`**
+  (`validateStep`, `WizardState`, `blankState`, `TOTAL_STEPS`, `DatosPersonales`, etc.).
+  Se comprobó que `CreditRequestForm.tsx` y `steps-version1/` los importan; si los quitas,
+  **se rompe el `next build`** (y con él también la v2, porque el build falla completo).
+- Los warnings de lint por "imports/const sin usar" en `Stepper.tsx` (`STEP_TITLES`,
+  `TOTAL_STEPS`, `STEP_SHORT_LABELS`) y `route.ts` (`idOk`) son **intencionales**: apuntan
+  a código v1 dejado comentado a propósito. No los "arregles" borrando esas referencias.
+
+### Detalles de la implementación v2
+
+- El endpoint mapea `identificacion` desde el RUC del solicitante; `telefono_solicitante`
+  y `nombre_empresa` van `null` (columnas nullable) porque v2 no los pide.
+- La tabla `solicitudes_credito` exige `nombre_solicitante`, `email_solicitante`
+  (NOT NULL) y `consentimiento_aceptado = true` (constraint). Por eso el Step 3 de v2
+  agrega esos campos y el checkbox de consentimiento — sin ellos el insert fallaría.
+- Se limpió el `tsconfig.json` (se quitó un `include` manual apuntando a un archivo
+  suelto de `steps-version2`, innecesario porque `**/*.tsx` ya lo cubre).
+
+### Verificación hecha esta sesión
+
+- Se corrigió un bug: el `Stepper` mostraba "PASO 01 / 08", título "Datos personales" y
+  barra al 12.5% porque aún usaba constantes de v1. Ahora usa las de v2 ("PASO 01 / 03",
+  "Tipo de solicitud", 33%).
+- Se manejó el navegador real (Playwright) recorriendo los 3 pasos: validación por paso,
+  ocultamiento del campo de cotización en "Apertura de línea", errores de campos y
+  documentos requeridos (Orden de compra queda opcional, sin error). 13/13 OK.
+- Se probó el endpoint por HTTP en las rutas que NO persisten (data vacío → 400,
+  honeypot → 200 falso, faltante de cotización en "nueva" → 400, consentimiento false →
+  400), confirmando que corre la validación de v2. **No se disparó un envío real** contra
+  Supabase para no insertar filas ni enviar correos de prueba.
+- `tsc --noEmit` en verde. Playwright se instaló solo para probar y se desinstaló al
+  final (`package.json` quedó sin cambios).
+
+---
+
 <!--
 Plantilla para nuevas sesiones — copiar y completar:
 

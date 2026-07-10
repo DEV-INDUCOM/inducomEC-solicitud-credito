@@ -27,7 +27,7 @@ export function AuthSplitLayout({
   return (
     <div className="grid min-h-screen grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] max-[900px]:grid-cols-1">
       <div className="flex flex-col bg-linear-[165deg] from-brand-navy-700 to-brand-navy-900 px-10 py-12 text-[var(--text-on-dark)] max-[900px]:px-6 max-[900px]:py-8">
-        <Logo variant="wordmark" onDark className="mb-12 max-[900px]:mb-8" />
+        <Logo variant="wordmark" onDark className="mb-12 max-[900px]:mb-8 " with_href={false} />
 
         <h1 className="max-w-[24ch] text-2xl text-[var(--text-on-dark)]">{heading}</h1>
         <p className="mt-3 max-w-[40ch] text-slate-300">{description}</p>
