@@ -56,6 +56,10 @@ export function validateStep2(step: number, s: WizardState2): FormErrors {
   } else if (step === 2) {
     if (!s.datos.nombreSolicitante.trim()) e.nombreSolicitante = "Ingresa el nombre del solicitante.";
     if (!emailOk(s.datos.emailSolicitante)) e.emailSolicitante = "Correo inválido.";
+    // La razón social solo se pide (y se guarda) para persona jurídica.
+    if (s.tipoCliente === "juridica" && !s.datos.razonSocial.trim()) {
+      e.razonSocial = "Ingresa la razón social de la empresa.";
+    }
     if (!s.datos.rucSolicitante.trim()) e.rucSolicitante = "Ingresa el RUC actualizado del solicitante.";
     // Cotización solo se exige en "nueva solicitud"; en apertura de línea el campo ni se muestra.
     if (s.tipoSolicitud === "nueva" && !s.datos.numeroCotizacion.trim()) {

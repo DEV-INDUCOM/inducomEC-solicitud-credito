@@ -16,7 +16,6 @@ const steps = [
     number: 3,
     title: "Invitación",
     description: "Reciba un código de acceso único y seguro a su correo oficial.",
-    active: true,
   },
   {
     number: 4,
@@ -46,14 +45,15 @@ export function AccessProcess() {
             <li key={step.number} className="relative">
               <Reveal
                 delayMs={index * 150}
-                // En mobile cada paso pasa de columna centrada a fila
-                // (número a la izquierda, texto a la derecha alineado).
-                className="flex flex-col items-center gap-3 text-center max-[760px]:flex-row max-[760px]:text-left"
+                // "group": el color del círculo ahora depende del hover sobre
+                // todo el paso (group-hover en el span), ya no de un flag fijo
+                // "active" en los datos.
+                className="group flex flex-col items-center gap-3 text-center max-[760px]:flex-row max-[760px]:text-left"
               >
                 <span
                   className={cn(
-                    "relative z-1 inline-flex h-12 w-12 items-center justify-center rounded-full font-display text-lg font-semibold text-[var(--text-on-dark)]",
-                    step.active ? "bg-[var(--accent)]" : "bg-brand-navy-600"
+                    "relative z-1 inline-flex h-12 w-12 items-center justify-center rounded-full font-display text-lg font-semibold text-[var(--text-on-dark)] transition-colors",
+                    "bg-brand-navy-600 group-hover:bg-[var(--accent)]"
                   )}
                 >
                   {step.number}

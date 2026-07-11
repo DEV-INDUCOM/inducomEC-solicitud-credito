@@ -12,7 +12,12 @@ import { Step2Datos } from "./steps-version2/Step2Datos";
 import { validateStep2 } from "./validation";
 import { blankState2, TOTAL_STEPS2, type DatosStep2, type WizardState2 } from "./types";
 
-type DatosTextField = "nombreSolicitante" | "emailSolicitante" | "rucSolicitante" | "numeroCotizacion";
+type DatosTextField =
+  | "nombreSolicitante"
+  | "emailSolicitante"
+  | "razonSocial"
+  | "rucSolicitante"
+  | "numeroCotizacion";
 type DatosFileField = Exclude<keyof DatosStep2, DatosTextField | "aceptaConsentimiento">;
 
 // Wizard v2: 3 pasos (Inicio -> Tipo de cliente -> Datos). Vive junto a la v1
@@ -27,6 +32,8 @@ export function CreditRequestForm2() {
   const [website, setWebsite] = useState("");
 
   const errors = state.errors;
+  // El último paso es el que envía: ahí un error es una falla de envío, no un aviso.
+  const isLastStep = state.step === TOTAL_STEPS2 - 1;
 
   function setDatosField(field: DatosTextField, value: string) {
     setState((s) => ({
@@ -67,6 +74,7 @@ export function CreditRequestForm2() {
     const {
       nombreSolicitante,
       emailSolicitante,
+      razonSocial,
       rucSolicitante,
       numeroCotizacion,
       solicitudFirmada,
@@ -88,6 +96,8 @@ export function CreditRequestForm2() {
         tipoCliente: state.tipoCliente,
         nombreSolicitante,
         emailSolicitante,
+        // Solo tiene sentido en jurídica; en natural se manda vacío y el servidor lo guarda como null.
+        razonSocial: state.tipoCliente === "juridica" ? razonSocial : "",
         rucSolicitante,
         numeroCotizacion,
         aceptaConsentimiento,
@@ -103,7 +113,7 @@ export function CreditRequestForm2() {
       ordenCompra,
     };
     for (const [key, file] of Object.entries(archivos)) {
-      if (file instanceof File) body.set(key, file);
+      if (file instanceof File) body.set(key, file); //es el que guarda el archivo bajo esa llave
     }
 
     try {
@@ -180,14 +190,20 @@ export function CreditRequestForm2() {
 
       <main className="mx-auto max-w-[55rem] px-6 py-6.5 pb-15 max-[640px]:px-4">
         <div className="rounded-2xl bg-[var(--bg-surface)] p-7.5 shadow-md max-[640px]:p-5">
+          {/* FORM STATUS
+              El tono depende de lo que significa el error en cada paso:
+              - Steps 0 y 1: solo falta elegir una opción -> es un aviso (info).
+              - Step 2 (último): se intentó ENVIAR y faltan campos -> es una falla (error). */}
           {Object.keys(errors).length > 0 && (
-            <div className="mb-5.5 flex items-center gap-2.5 rounded-lg border border-[color:var(--state-danger-border)] bg-[var(--state-danger-bg)] px-3.5 py-2.5">
-              <IconAlertCircle size={18} className="shrink-0 text-[var(--state-danger-text)]" aria-hidden="true" />
-              <span className="text-sm font-medium text-[var(--state-danger-text)]">
-                Revisa los campos marcados para continuar.
-              </span>
+            <div className="mb-5.5">
+              <FormStatus tone={isLastStep ? "error" : "info"}>
+                {isLastStep
+                  ? "Revisa los campos marcados para continuar."
+                  : "Selecciona una opción para continuar."}
+              </FormStatus>
             </div>
           )}
+
 
           {state.step === 0 && (
             <Step0TwoOptions
@@ -212,6 +228,7 @@ export function CreditRequestForm2() {
           {state.step === 2 && (
             <Step2Datos
               tipoSolicitud={state.tipoSolicitud}
+              tipoCliente={state.tipoCliente}
               datos={state.datos}
               errors={errors}
               onFieldChange={setDatosField}
@@ -226,6 +243,7 @@ export function CreditRequestForm2() {
             />
           )}
 
+          {/* FORM STATUS*/}
           {status && (
             <div className="mt-5.5">
               <FormStatus tone={status.tone}>{status.message}</FormStatus>
@@ -241,7 +259,7 @@ export function CreditRequestForm2() {
               <span />
             )}
             <Button type="button" size="lg" onClick={next} loading={status?.tone === "loading"}>
-              {state.step === TOTAL_STEPS2 - 1 ? "Enviar solicitud" : "Continuar →"}
+              {isLastStep ? "Enviar solicitud" : "Continuar →"}
             </Button>
           </div>
         </div>

@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     return genericError(500, "No se pudo procesar la solicitud. Intenta más tarde.");
   }
 
+  //? En form es donde vienen los archivos y el JSON de los datos del formulario.
   let form: FormData;
   try {
     form = await request.formData();
@@ -125,6 +126,8 @@ export async function POST(request: Request) {
   if (!nonEmpty(data.nombreSolicitante)) errors.push("nombreSolicitante");
   if (!emailOk(data.emailSolicitante)) errors.push("emailSolicitante");
   if (!nonEmpty(data.rucSolicitante)) errors.push("rucSolicitante");
+  // La razón social solo se exige a persona jurídica; en natural no aplica.
+  if (data.tipoCliente === "juridica" && !nonEmpty(data.razonSocial)) errors.push("razonSocial");
   // La cotización solo se exige en "nueva solicitud"; en apertura de línea no aplica.
   if (data.tipoSolicitud === "nueva" && !nonEmpty(data.numeroCotizacion)) errors.push("numeroCotizacion");
   if (data.aceptaConsentimiento !== true) errors.push("aceptaConsentimiento");
@@ -181,9 +184,13 @@ export async function POST(request: Request) {
   //   .single();
 
   // ===== Inserción v2 (steps-version2) =====
-  // v2 no captura teléfono ni empresa (columnas nullable), así que van null.
+  // v2 no captura teléfono (columna nullable), así que va null.
   // identificacion se mapea desde el RUC del solicitante.
   const nombreSolicitante = String(data.nombreSolicitante).trim();
+  // nombre_empresa solo se llena en persona jurídica (con la razón social);
+  // en persona natural no hay empresa, así que queda null.
+  const nombreEmpresa =
+    data.tipoCliente === "juridica" ? String(data.razonSocial).trim() : null;
   const { data: solicitud, error: insertError } = await supabase
     .from("solicitudes_credito")
     .insert({
@@ -195,7 +202,7 @@ export async function POST(request: Request) {
       datos_adicionales: data,
       consentimiento_aceptado: true,
       consentimiento_fecha: new Date().toISOString(),
-      nombre_empresa: null,
+      nombre_empresa: nombreEmpresa,
     })
     .select("id")
     .single();
@@ -256,7 +263,7 @@ export async function POST(request: Request) {
         subject: `Nueva solicitud de crédito — ${folio}`,
         // v1: text: `...\nNombre: ${String(datos.nombres ?? "")} ${String(datos.apellidos ?? "")}\nCorreo: ${String(datos.correo ?? "")}\nEmpresa: ${String(actividad.nombreEmpresa ?? "")}`,
         // v2: usa los campos del formulario reducido (tipo de solicitud, nombre, correo, RUC).
-        text: `Se recibió una nueva solicitud de crédito.\n\nFolio: ${folio}\nTipo de solicitud: ${String(data.tipoSolicitud)}\nTipo de cliente: ${String(data.tipoCliente)}\nNombre: ${String(data.nombreSolicitante ?? "")}\nCorreo: ${String(data.emailSolicitante ?? "")}\nRUC: ${String(data.rucSolicitante ?? "")}`,
+        text: `Se recibió una nueva solicitud de crédito.\n\nFolio: ${folio}\nTipo de solicitud: ${String(data.tipoSolicitud)}\nTipo de cliente: ${String(data.tipoCliente)}\nNombre: ${String(data.nombreSolicitante ?? "")}\nCorreo: ${String(data.emailSolicitante ?? "")}\nRUC: ${String(data.rucSolicitante ?? "")}${nombreEmpresa ? `\nEmpresa: ${nombreEmpresa}` : ""}`,
       });
     } catch (error) {
       console.error(`Fallo al enviar notificación de la solicitud ${folio}:`, error);

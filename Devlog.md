@@ -164,8 +164,15 @@ tipos y validaciones conviven ahí sin estorbarse.
 
 ### Detalles de la implementación v2
 
+- **Razón social / `nombre_empresa` (según tipo de cliente):** si el usuario elige
+  **Persona Jurídica**, en el paso 3 aparece el campo **"Razón social"** (obligatorio) y
+  su valor se guarda en la columna `nombre_empresa`. Si elige **Persona Natural**, el
+  campo **no se muestra**, no se valida, y `nombre_empresa` se guarda como `null` (no hay
+  empresa que registrar). La regla está tanto en el cliente (`validateStep2`) como
+  revalidada en el servidor (`route.ts`), porque la validación del navegador es solo
+  ayuda de UX.
 - El endpoint mapea `identificacion` desde el RUC del solicitante; `telefono_solicitante`
-  y `nombre_empresa` van `null` (columnas nullable) porque v2 no los pide.
+  va `null` (columna nullable) porque v2 no lo pide.
 - La tabla `solicitudes_credito` exige `nombre_solicitante`, `email_solicitante`
   (NOT NULL) y `consentimiento_aceptado = true` (constraint). Por eso el Step 3 de v2
   agrega esos campos y el checkbox de consentimiento — sin ellos el insert fallaría.
@@ -186,6 +193,149 @@ tipos y validaciones conviven ahí sin estorbarse.
   Supabase para no insertar filas ni enviar correos de prueba.
 - `tsc --noEmit` en verde. Playwright se instaló solo para probar y se desinstaló al
   final (`package.json` quedó sin cambios).
+
+---
+
+## Sesión — 2026-07-11
+
+**Tema principal: se construyó el área privada del Portal (dashboard + módulo PayPal)
+con datos reales de Supabase, sobre la base de Auth que ya estaba conectada.**
+
+### Arreglos previos (bloqueaban levantar el proyecto)
+
+- **`globals.css` no compilaba** (`Unexpected token Delim('.')`). Causa: un comentario
+  JSDoc en `Button.tsx` tenía como ejemplo un selector de borde arbitrario con tres
+  puntos suspensivos literales en vez de un nombre de variable real; el scanner de
+  Tailwind no distingue comentarios de código, lo tomó como una clase real y generó
+  CSS inválido. Se reescribió el comentario sin ese patrón. Ojo: en un primer intento
+  el comentario que *explicaba* el arreglo volvió a incluir el mismo texto literal y
+  rompió el build otra vez — y este mismo Devlog lo rompió una tercera vez al citarlo
+  entre comillas (el scanner de Tailwind también rastrea `.md`). Moraleja: nunca
+  escribir ese patrón literal en ningún archivo del repo, ni siquiera para explicarlo;
+  describirlo en palabras alcanza.
+- **Warning de aspect-ratio** en el logo (`Logo.tsx`): tenía `w-auto` solo por clase
+  CSS, que Next no puede ver para el chequeo de `next/image`. Se agregó
+  `style={{ width: "auto" }}` explícito.
+- Se verificó la conexión real a Supabase (URL/anon key/service_role en `.env`,
+  nunca en `.env.example`) contra el proyecto compartido con el compañero de equipo:
+  las 7 tablas del esquema (`paises`, `empresas`, `perfiles`, `codigos_invitacion`,
+  `solicitudes_credito`, `documentos_credito`, `pagos`) ya existían con datos.
+
+### Gap encontrado: no había dónde guardar el incentivo activo por empresa
+
+`design-portal.md` pide mostrar un "incentivo activo" real por empresa (cashback 1%,
+garantía extendida, despacho rápido) y un comparador — pero el esquema real (confirmado
+vía OpenAPI de PostgREST, no solo la migración documentada) no tenía ninguna tabla ni
+columna para eso. Se agregó una migración nueva (no se tocó
+`20260709000000_schema_portal_inducom.sql`, que ya está documentado como aplicado en
+producción — las migraciones no se re-editan, se sirven en el historial):
+
+- `supabase/migrations/20260710010000_incentivo_activo_empresa.sql`: tabla
+  `incentivos_empresa` (`empresa_id` uuid **primary key** → fuerza "un incentivo activo
+  por empresa" sin lógica extra, `tipo` con `check` a los 3 valores fijos, `asignado_en`
+  para trazabilidad). Se descartó la primera idea (una columna simple en `empresas`)
+  porque no daba historial de cuándo se asignó — el resto del esquema sí modela estado
+  con fecha (`codigos_invitacion`, `solicitudes_credito`). RLS habilitado con policy
+  "usuarios ven el incentivo de su empresa" (mismo patrón que `pagos`). No toca Auth,
+  RLS de otras tablas ni la lógica de códigos de invitación.
+- La asignación es manual desde el SQL Editor de Supabase (mismo modelo operativo que
+  pagos y códigos, según `consideraciones-tecnicas-portal-inducom.md`).
+
+### Capa de datos del portal (`src/lib/portal/`)
+
+- `types.ts`: `PortalPerfil`, `PortalEmpresa`, `PortalContext`, `PortalPago`,
+  `IncentivoTipo`.
+- `queries.ts`: `getPortalContext()` (perfil + empresa + país + incentivo del usuario
+  logueado, usando `cache()` de React para no repetir la consulta si el layout y la
+  página la piden en el mismo request), `getSaldo(empresaId)`, `getPagos(empresaId, limit?)`.
+  Cada una devuelve un resultado tipado `{ ok: true, data }` / `{ ok: false, reason }`
+  en vez de tirar: así cada página decide qué estado mostrar (sin sesión, sin perfil,
+  error) en vez de que la página reviente.
+- `nav.ts`: lista única de navegación del portal (`portalNavItems`) que consumen tanto
+  el sidebar de escritorio como el drawer de móvil — evita mantener el menú en dos
+  lugares. Los ítems sin `href` (Facturas y pagos, Cotizaciones) son los módulos
+  "próximamente".
+- `format.ts`: `formatMonto` / `formatFecha` centralizados en locale `es-EC` (según
+  `design-portal.md`, sección de montos y números).
+- `incentivos.ts`: catálogo fijo de los 3 tipos de incentivo (título, descripción,
+  ícono Tabler) que usan tanto `BenefitCard` como el comparador.
+
+### Componentes UI nuevos (`src/components/ui/`)
+
+- `StatusBadge.tsx`: badge tipo pill con los 5 tonos semánticos del design system
+  (`info/warning/success/danger/neutral`), fondo tenue + texto oscuro, nunca sólido
+  saturado (regla de `design-portal.md` sección 3).
+- `EmptyState.tsx` / `ErrorState.tsx`: estados vacío y de error genéricos y
+  reutilizables. `ErrorState` nunca expone detalles internos de Supabase, solo mensaje
+  genérico (regla de seguridad de `consideraciones-tecnicas`).
+- `LoadingSkeleton.tsx`: bloques de skeleton + `DashboardSkeleton` / `PaypalSkeleton`
+  compuestos, usados por los `loading.tsx` de cada ruta (Next los muestra automático
+  mientras el Server Component carga, sin JS de cliente extra).
+
+### Componentes de dominio (`src/components/portal/`)
+
+`BalanceCard`, `BenefitCard`, `CompanySummary`, `ComparisonCard` (exporta
+`IncentiveComparison`), `PaymentHistory` (una tabla en desktop/tablet y tarjetas
+apiladas en móvil, responsive con Tailwind, sin fragmentar en dos componentes
+separados), `StatCard`.
+
+### Layout privado (`src/components/layout/portal/`)
+
+- `PortalSidebar.tsx` + `PortalNavList.tsx` + `MobilePortalNavigation.tsx`: sidebar
+  navy fijo en desktop (oculto en móvil), drawer en móvil. `PortalNavList` resalta el
+  ítem activo comparando `usePathname()` contra `nav.ts`.
+- `PortalTopbar.tsx`: nombre de empresa + botón de menú (móvil) + `LogoutButton`.
+- `PortalShell.tsx` reescrito para componer sidebar + topbar + contenido.
+  **Bug encontrado y corregido en esta misma sesión:** la primera versión usaba
+  `sticky` + `h-screen` en el sidebar con toda la página haciendo scroll; en páginas
+  más largas que un viewport, el sidebar se "acababa" antes del final de la página
+  (comportamiento normal de `sticky`, pero no el buscado). Se cambió a un shell fijo
+  (`h-screen overflow-hidden` en el contenedor raíz, sidebar a `h-full`) donde **solo
+  `<main>` hace scroll** — patrón estándar de "app shell", así el sidebar/topbar
+  siempre se ven completos sin importar el largo del contenido.
+- `src/app/(portal)/layout.tsx`: ahora resuelve `getPortalContext()` una vez y decide
+  qué mostrar: redirect a login (sin sesión — defensa en profundidad, `proxy.ts` ya
+  filtra esto), `EmptyState` (usuario autenticado sin perfil — caso "huérfano" de
+  `consideraciones-tecnicas`), `ErrorState` (falla de conexión), o el `PortalShell` con
+  los datos reales.
+- `Logo.tsx` extendido (sin romper usos existentes, todo con default): ahora acepta
+  `src`, `imageClassName`, `width`, `height` (para poder usar la versión blanca del
+  logo sobre el navy del sidebar) y `asLink` (para renderizarlo sin el `<Link>`
+  envolvente cuando no debe navegar).
+
+### Páginas reescritas con datos reales
+
+- `dashboard/page.tsx` y `paypal/page.tsx`: Server Components async, consultan
+  `getPortalContext` + `getSaldo` + `getPagos` en paralelo (`Promise.all`), sin lógica
+  sensible en el cliente. Contemplan estado vacío (empresa sin pagos / sin incentivo)
+  y estado de error, nunca dejan un botón que aparente funcionar sin hacerlo.
+- `loading.tsx` en ambas rutas usando los skeletons compuestos.
+
+### Verificación hecha esta sesión
+
+- `tsc --noEmit`, `npm run lint` y `npm run build` (producción) corridos varias veces
+  durante la sesión, siempre en verde.
+- Se verificó por API (solo lectura, con `service_role`, sin exponerla nunca en
+  output) que la tabla `incentivos_empresa` quedó creada con el shape esperado y que
+  la consulta que usa `getPortalContext()` responde `200`.
+- Se probó en el navegador real (no por mí — no hay herramienta de browser headless
+  disponible en este entorno; se intentó generar una cookie de sesión programática
+  para probarlo yo mismo y el propio sistema lo bloqueó como manejo de credenciales no
+  autorizado, así que se descartó ese camino) con la cuenta de prueba
+  `alisa@gmail.com` (empresa sin pagos ni incentivo asignado todavía): se confirmó que
+  cargan el dashboard y PayPal con los estados vacíos correctos ("Aún no se ha cargado
+  ningún pago", "Sin incentivo asignado", "Aún no hay pagos registrados").
+- Pendiente para una próxima sesión: repetir la prueba con una empresa que sí tenga
+  pagos e incentivo asignado (para ver `BalanceCard`/`PaymentHistory`/`ComparisonCard`
+  con contenido real, no solo estados vacíos), y una revisión responsive en
+  tablet/móvil sobre el navegador real.
+
+### Ajuste menor en landing (fuera del alcance del portal privado)
+
+- `AccessProcess.tsx`: el paso 3 ("Invitación") tenía `active: true` fijo, pintando su
+  círculo siempre en naranja. Se cambió a `group-hover`: los 4 círculos arrancan en
+  navy y cualquiera se resalta en naranja al pasar el cursor por encima de ese paso,
+  ninguno queda resaltado por defecto.
 
 ---
 

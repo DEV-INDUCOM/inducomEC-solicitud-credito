@@ -1,9 +1,14 @@
 import { Input } from "@/components/ui/Input";
 import { FileField } from "@/components/ui/FileField";
 import { Checkbox } from "@/components/ui/Checkbox";
-import type { DatosStep2, FormErrors, TipoSolicitud } from "../types";
+import type { DatosStep2, FormErrors, TipoCliente, TipoSolicitud } from "../types";
 
-type TextField = "nombreSolicitante" | "emailSolicitante" | "rucSolicitante" | "numeroCotizacion";
+type TextField =
+  | "nombreSolicitante"
+  | "emailSolicitante"
+  | "razonSocial"
+  | "rucSolicitante"
+  | "numeroCotizacion";
 type FileFieldKey = Exclude<keyof DatosStep2, TextField | "aceptaConsentimiento">;
 
 const FILE_DEFS: Array<[key: FileFieldKey, label: string, requiredErrorKey?: string]> = [
@@ -20,6 +25,7 @@ const FILE_DEFS: Array<[key: FileFieldKey, label: string, requiredErrorKey?: str
 // checklist de documentos que antes vivía en un paso "Requisitos" aparte.
 export function Step2Datos({
   tipoSolicitud,
+  tipoCliente,
   datos,
   errors,
   onFieldChange,
@@ -27,6 +33,7 @@ export function Step2Datos({
   onToggleConsentimiento,
 }: {
   tipoSolicitud: TipoSolicitud;
+  tipoCliente: TipoCliente;
   datos: DatosStep2;
   errors: FormErrors;
   onFieldChange: (field: TextField, value: string) => void;
@@ -52,6 +59,17 @@ export function Step2Datos({
           onChange={(e) => onFieldChange("emailSolicitante", e.target.value)}
           error={errors.emailSolicitante}
         />
+        {/* Solo persona jurídica: alimenta la columna nombre_empresa. En persona
+            natural no se muestra y se guarda como null. */}
+        {tipoCliente === "juridica" && (
+          <Input
+            label="Razón social"
+            placeholder="Nombre legal de la empresa"
+            value={datos.razonSocial}
+            onChange={(e) => onFieldChange("razonSocial", e.target.value)}
+            error={errors.razonSocial}
+          />
+        )}
         <Input
           label="RUC actualizado del solicitante"
           placeholder="Ej. 0990000000001"

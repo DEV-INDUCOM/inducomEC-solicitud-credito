@@ -164,6 +164,8 @@ export interface DatosStep2 {
   // (columnas NOT NULL), por eso v2 también los recolecta.
   nombreSolicitante: string;
   emailSolicitante: string;
+  // Solo aplica a persona jurídica; se guarda en la columna nombre_empresa.
+  razonSocial: string;
   rucSolicitante: string;
   // Solo aplica cuando tipoSolicitud === "nueva"; en apertura de línea no hay cotización.
   numeroCotizacion: string;
@@ -198,6 +200,7 @@ export function blankState2(): WizardState2 {
     datos: {
       nombreSolicitante: "",
       emailSolicitante: "",
+      razonSocial: "",
       rucSolicitante: "",
       numeroCotizacion: "",
       solicitudFirmada: null,
