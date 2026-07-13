@@ -6,9 +6,12 @@ import { routes } from "@/lib/config/site";
 
 export function Hero() {
   return (
-    // Fondo: foto real (public/images/background-image.png) + degradado navy a la izquierda
+    // Fondo: foto real (public/Images/background-image.png) + degradado navy a la izquierda
     // (donde va el texto) que se desvanece hacia la foto a la derecha, en vez del gradiente falso anterior.
-    <section className="relative flex min-h-[700px] items-center overflow-hidden bg-[linear-gradient(90deg,var(--brand-navy-900)_0%,rgba(0,0,39,0.85)_38%,rgba(0,0,39,0.25)_70%,transparent_100%),url('/images/background-image.png')] bg-cover bg-center text-[var(--text-on-dark)]">
+    // Ojo con el "Images" en mayúscula: en Windows daba igual, pero en Vercel
+    // (Linux, sensible a mayúsculas) una "i" minúscula hacía 404 la imagen en
+    // producción y solo se veía el degradado.
+    <section className="relative flex min-h-[700px] items-center overflow-hidden bg-[linear-gradient(90deg,var(--brand-navy-900)_0%,rgba(0,0,39,0.85)_38%,rgba(0,0,39,0.25)_70%,transparent_100%),url('/Images/background-image.png')] bg-cover bg-center text-[var(--text-on-dark)]">
       <div className="page-container relative py-24 max-[900px]:py-16">
         <Reveal className="max-w-[46rem]">
           <Eyebrow className="mb-5">B2B Industrial Portal</Eyebrow>

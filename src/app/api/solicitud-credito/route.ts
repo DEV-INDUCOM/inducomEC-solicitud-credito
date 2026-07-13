@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { serverEnv } from "@/lib/config/env.server";
 import { publicEnv } from "@/lib/config/env";
+import { checkRateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
+import { renderNuevaSolicitudEmail } from "@/lib/email/nueva-solicitud";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -41,6 +43,10 @@ const REQUISITO_KEYS = [
 ];
 const ADJUNTOS_BUCKET = "documentos-credito";
 const MAX_DATA_LENGTH = 250_000;
+// El dominio dado de alta en Resend es grupo-inducom.com (OJO: no es inducom-ec.com,
+// que es el del SMTP de Zoho de Supabase Auth — son dos cosas distintas).
+// Resend rechaza el envío si el `from` es de un dominio que no está verificado ahí.
+const NOTIFICATION_FROM = "Portal INDUCOM <notificaciones@grupo-inducom.com>";
 
 const emailOk = (v: unknown) => typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const idOk = (v: unknown) => typeof v === "string" && /^\d{10}$|^\d{13}$/.test(v.trim());
@@ -52,6 +58,15 @@ function genericError(status: number, message: string) {
 }
 
 export async function POST(request: Request) {
+  // Primer filtro, antes de leer el body: si esta IP ya envió 3 solicitudes en
+  // los últimos 10 min, se corta aquí sin gastar CPU ni tocar Supabase.
+  const rateLimit = checkRateLimit(request, {
+    keyPrefix: "solicitud-credito",
+    limit: 3,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (rateLimit.limited) return rateLimitResponse(rateLimit.resetAt);
+
   if (!publicEnv.supabaseUrl || !serverEnv.supabaseServiceRoleKey) {
     // Configuración incompleta del lado del servidor: no es un error del usuario.
     console.error("NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no configurados.");
@@ -256,14 +271,31 @@ export async function POST(request: Request) {
   // guardada, así que no se le muestra un error al cliente por esto.
   if (serverEnv.resendApiKey && serverEnv.internalNotificationEmail) {
     try {
+      // Mismo diseño que la plantilla de Supabase Auth. Se le pasan las claves de
+      // los adjuntos que sí llegaron, no las 7 posibles.
+      const { html, text } = renderNuevaSolicitudEmail({
+        folio,
+        tipoSolicitud: String(data.tipoSolicitud),
+        tipoCliente: String(data.tipoCliente),
+        nombreSolicitante,
+        nombreEmpresa,
+        emailSolicitante: String(data.emailSolicitante).trim().toLowerCase(),
+        rucSolicitante: String(data.rucSolicitante).trim(),
+        numeroCotizacion: nonEmpty(data.numeroCotizacion) ? String(data.numeroCotizacion).trim() : undefined,
+        adjuntos: files.map(({ key }) => key),
+      });
+
       const resend = new Resend(serverEnv.resendApiKey);
       await resend.emails.send({
-        from: "Portal INDUCOM <notificaciones@inducom.com>",
+        // El dominio verificado en Resend es inducom-ec.com (el mismo del SMTP de
+        // Zoho). Resend rechaza cualquier `from` de un dominio que no controlemos.
+        from: NOTIFICATION_FROM,
         to: serverEnv.internalNotificationEmail,
+        // Responder al correo cae directo en el buzón del cliente, no en el vacío.
+        replyTo: String(data.emailSolicitante).trim().toLowerCase(),
         subject: `Nueva solicitud de crédito — ${folio}`,
-        // v1: text: `...\nNombre: ${String(datos.nombres ?? "")} ${String(datos.apellidos ?? "")}\nCorreo: ${String(datos.correo ?? "")}\nEmpresa: ${String(actividad.nombreEmpresa ?? "")}`,
-        // v2: usa los campos del formulario reducido (tipo de solicitud, nombre, correo, RUC).
-        text: `Se recibió una nueva solicitud de crédito.\n\nFolio: ${folio}\nTipo de solicitud: ${String(data.tipoSolicitud)}\nTipo de cliente: ${String(data.tipoCliente)}\nNombre: ${String(data.nombreSolicitante ?? "")}\nCorreo: ${String(data.emailSolicitante ?? "")}\nRUC: ${String(data.rucSolicitante ?? "")}${nombreEmpresa ? `\nEmpresa: ${nombreEmpresa}` : ""}`,
+        html,
+        text,
       });
     } catch (error) {
       console.error(`Fallo al enviar notificación de la solicitud ${folio}:`, error);
