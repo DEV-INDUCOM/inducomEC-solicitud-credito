@@ -81,7 +81,7 @@ export function Step2Datos({
         {tipoSolicitud === "nueva" && (
           <Input
             label="Número de cotización"
-            placeholder="Ej. COT-2026-00123"
+            placeholder="Ej. 20260140-090280887"
             value={datos.numeroCotizacion}
             onChange={(e) => onFieldChange("numeroCotizacion", e.target.value)}
             error={errors.numeroCotizacion}

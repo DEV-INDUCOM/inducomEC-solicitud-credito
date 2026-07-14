@@ -196,7 +196,93 @@ tipos y validaciones conviven ahí sin estorbarse.
 
 ---
 
-## Sesión — 2026-07-11
+## Sesión — 2026-07-13
+
+**Cambios de esta sesión:**
+
+### Rate limit por IP en `/api/solicitud-credito` (`src/lib/server/rate-limit.ts`)
+
+- El endpoint era público y **sin ningún tope**: cualquiera podía repetir el POST en
+  bucle y crear filas infinitas en `solicitudes_credito` + subir hasta 70 MB por envío
+  al bucket (7 adjuntos × 10 MB). El honeypot no cubre esto — solo frena bots que
+  llenan campos ocultos, no a alguien que copie la petición del Network tab.
+- `checkRateLimit()` cuenta peticiones por IP en un `Map` en memoria y devuelve `429`
+  con header `Retry-After`. Configurado en **3 envíos cada 10 minutos por IP**.
+- Va como **primer guard del `POST`**, antes de leer el body: una petición bloqueada no
+  gasta CPU parseando el `FormData` ni toca Supabase.
+- Verificado contra el dev server: 3 peticiones desde la misma IP pasan al validador,
+  la 4ª y 5ª devuelven 429, y una IP distinta pasa sin problema (el contador es por IP,
+  así que un atacante no puede dejar fuera a los clientes reales).
+- **Limitación conocida:** el contador vive en memoria del proceso. En Vercel cada
+  instancia serverless lleva el suyo, así que el límite efectivo es más laxo. Suficiente
+  para el MVP; si hace falta rigor, mover el contador a Supabase o a un KV externo.
+- Adaptado de la rama `feature/backend-ivan` (no se hizo merge: las dos ramas
+  reescribieron `route.ts` por separado y un merge habría roto la v2 del formulario).
+
+### Correo de notificación de nueva solicitud (`src/lib/email/nueva-solicitud.ts`)
+
+- Hasta ahora el bloque de Resend en `route.ts` era **código muerto**: existía, pero
+  `RESEND_API_KEY` e `INTERNAL_NOTIFICATION_EMAIL` estaban vacías, así que el `if` nunca
+  entraba. Nadie en INDUCOM se enteraba de una solicitud nueva; había que mirar la tabla
+  en Supabase a mano.
+- Nueva plantilla HTML con el **mismo diseño que el correo de "Restablece tu contraseña"**
+  que vive en el dashboard de Supabase: tablas anidadas y estilos inline (lo único que
+  renderiza bien en Outlook/Gmail), con los colores de `design-tokens.css` —
+  navy `#00005B`, navy oscuro `#000027`, naranja `#EE6B03`.
+- Contenido: folio destacado, tabla de datos del solicitante (tipo de solicitud, tipo de
+  cliente, nombre, empresa si es jurídica, correo, RUC, cotización si es "nueva") y lista
+  de los documentos que sí llegaron, con etiquetas legibles en vez de las claves internas.
+- Se envía también versión **texto plano**, para el preview de algunos clientes y para no
+  puntuar como spam por venir solo en HTML.
+- `replyTo` apunta al correo del solicitante: responder el aviso escribe directo al
+  cliente.
+- **Todo valor dinámico pasa por `escapeHtml()`.** Los datos vienen del formulario
+  público, así que un nombre con `<` o `"` rompería la maqueta y uno malicioso podría
+  inyectar marcado en la bandeja de quien lo abra. Verificado con un `<script>` de prueba
+  en el nombre: queda escapado.
+- La plantilla **no** lleva `import "server-only"` a propósito: es una función pura que
+  solo arma un string y no toca credenciales, así que puede renderizarse desde un script
+  para previsualizarla. El secreto (la API key) lo guarda el route handler.
+
+### Corrección del dominio remitente
+
+- El `from` estaba hardcodeado como `notificaciones@inducom.com` — un dominio que **no
+  existe en la cuenta de Resend**. Se corrigió a `notificaciones@grupo-inducom.com`.
+- Cuidado con los tres dominios, que son fáciles de confundir:
+  - `inducom-ec.com` → SMTP de **Zoho**, lo usa **Supabase Auth** (correo de recuperar
+    contraseña). Funcionando.
+  - `grupo-inducom.com` → dado de alta en **Resend**, para la notificación interna.
+  - `inducom.com` → no existe en ningún lado. Era el valor viejo, incorrecto.
+
+**⚠️ Pendientes para que el correo de notificación funcione (hoy NO envía):**
+
+1. **Verificar `grupo-inducom.com` en Resend.** La API lo reporta como `not_started` y
+   un envío de prueba devuelve `403: The grupo-inducom.com domain is not verified`. Hay
+   que agregar los registros DNS (SPF/DKIM) que da Resend en resend.com/domains.
+2. **Llenar `INTERNAL_NOTIFICATION_EMAIL`** en `.env` (y en Vercel). Está vacía, así que
+   el `if` de `route.ts` ni siquiera entra. Es el correo interno que recibe el aviso.
+
+**Nota sobre el correo de "olvidé mi contraseña":** no requirió ningún cambio de código.
+La plantilla HTML vive en el dashboard de Supabase (Authentication → Emails), sale por el
+SMTP de Zoho (`analista@inducom-ec.com`), y el `resetPasswordForEmail()` que ya existía en
+`ForgotPasswordForm.tsx` la dispara tal cual. Supabase Auth **solo** manda correos de
+autenticación — por eso la notificación de solicitud nueva necesita Resend aparte.
+
+**⚠️ Pendiente crítico (sigue abierto):** el commit `3d9c17d` de `feature/backend-ivan`
+publicó la `SUPABASE_SERVICE_ROLE_KEY` real en `.env.example`, que sí se sube a Git. Esa
+llave **ignora todo el RLS**: da lectura/escritura/borrado sobre toda la base y sobre el
+bucket privado con las cédulas y certificados bancarios de los clientes. Borrar el archivo
+**no basta** — queda en el historial. Hay que **rotar la llave** (Supabase → Settings →
+API → Rotate) y actualizar `.env` y las variables de Vercel.
+
+**Antes de desplegar a Vercel:** configurar Supabase → Authentication → **URL
+Configuration** con el dominio de producción en *Redirect URLs* (`https://…/**`). Sin eso,
+`redirectTo` apuntará a la URL de Vercel, Supabase la rechazará por no estar en la lista
+blanca, y el enlace del correo de recuperar contraseña no funcionará.
+
+---
+
+## Sesión — 2026-07-14
 
 **Tema principal: se construyó el área privada del Portal (dashboard + módulo PayPal)
 con datos reales de Supabase, sobre la base de Auth que ya estaba conectada.**
@@ -337,91 +423,36 @@ separados), `StatCard`.
   navy y cualquiera se resalta en naranja al pasar el cursor por encima de ese paso,
   ninguno queda resaltado por defecto.
 
----
+### Fix de imagen rota en producción (Vercel): mayúscula/minúscula en la ruta
 
-## Sesión — 2026-07-13
+- El deploy de Vercel mostraba el Hero de la landing **sin la foto de fondo** (solo el
+  degradado navy), aunque en local se veía bien. Causa: en `Hero.tsx` la ruta estaba
+  escrita como `/images/background-image.png` (minúscula), pero la carpeta real es
+  `public/Images/` (con **I** mayúscula). Windows no distingue mayúsculas/minúsculas en
+  rutas de archivo, así que funcionaba en local; Vercel corre sobre Linux, que sí
+  distingue, y la imagen daba 404 en producción.
+- Se corrigió a `/Images/background-image.png`. Se revisó el resto del repo por el mismo
+  patrón (`grep` de `/images/` en minúscula) y no había más casos.
+- Pendiente para quien haga el próximo deploy: falta el commit + push de este cambio
+  (y del fix del comentario que rompía `globals.css`, más arriba en esta misma sesión)
+  para que se refleje en Vercel.
 
-**Cambios de esta sesión:**
+### Validación de RUC (13 dígitos) en la solicitud de crédito v2
 
-### Rate limit por IP en `/api/solicitud-credito` (`src/lib/server/rate-limit.ts`)
-
-- El endpoint era público y **sin ningún tope**: cualquiera podía repetir el POST en
-  bucle y crear filas infinitas en `solicitudes_credito` + subir hasta 70 MB por envío
-  al bucket (7 adjuntos × 10 MB). El honeypot no cubre esto — solo frena bots que
-  llenan campos ocultos, no a alguien que copie la petición del Network tab.
-- `checkRateLimit()` cuenta peticiones por IP en un `Map` en memoria y devuelve `429`
-  con header `Retry-After`. Configurado en **3 envíos cada 10 minutos por IP**.
-- Va como **primer guard del `POST`**, antes de leer el body: una petición bloqueada no
-  gasta CPU parseando el `FormData` ni toca Supabase.
-- Verificado contra el dev server: 3 peticiones desde la misma IP pasan al validador,
-  la 4ª y 5ª devuelven 429, y una IP distinta pasa sin problema (el contador es por IP,
-  así que un atacante no puede dejar fuera a los clientes reales).
-- **Limitación conocida:** el contador vive en memoria del proceso. En Vercel cada
-  instancia serverless lleva el suyo, así que el límite efectivo es más laxo. Suficiente
-  para el MVP; si hace falta rigor, mover el contador a Supabase o a un KV externo.
-- Adaptado de la rama `feature/backend-ivan` (no se hizo merge: las dos ramas
-  reescribieron `route.ts` por separado y un merge habría roto la v2 del formulario).
-
-### Correo de notificación de nueva solicitud (`src/lib/email/nueva-solicitud.ts`)
-
-- Hasta ahora el bloque de Resend en `route.ts` era **código muerto**: existía, pero
-  `RESEND_API_KEY` e `INTERNAL_NOTIFICATION_EMAIL` estaban vacías, así que el `if` nunca
-  entraba. Nadie en INDUCOM se enteraba de una solicitud nueva; había que mirar la tabla
-  en Supabase a mano.
-- Nueva plantilla HTML con el **mismo diseño que el correo de "Restablece tu contraseña"**
-  que vive en el dashboard de Supabase: tablas anidadas y estilos inline (lo único que
-  renderiza bien en Outlook/Gmail), con los colores de `design-tokens.css` —
-  navy `#00005B`, navy oscuro `#000027`, naranja `#EE6B03`.
-- Contenido: folio destacado, tabla de datos del solicitante (tipo de solicitud, tipo de
-  cliente, nombre, empresa si es jurídica, correo, RUC, cotización si es "nueva") y lista
-  de los documentos que sí llegaron, con etiquetas legibles en vez de las claves internas.
-- Se envía también versión **texto plano**, para el preview de algunos clientes y para no
-  puntuar como spam por venir solo en HTML.
-- `replyTo` apunta al correo del solicitante: responder el aviso escribe directo al
-  cliente.
-- **Todo valor dinámico pasa por `escapeHtml()`.** Los datos vienen del formulario
-  público, así que un nombre con `<` o `"` rompería la maqueta y uno malicioso podría
-  inyectar marcado en la bandeja de quien lo abra. Verificado con un `<script>` de prueba
-  en el nombre: queda escapado.
-- La plantilla **no** lleva `import "server-only"` a propósito: es una función pura que
-  solo arma un string y no toca credenciales, así que puede renderizarse desde un script
-  para previsualizarla. El secreto (la API key) lo guarda el route handler.
-
-### Corrección del dominio remitente
-
-- El `from` estaba hardcodeado como `notificaciones@inducom.com` — un dominio que **no
-  existe en la cuenta de Resend**. Se corrigió a `notificaciones@grupo-inducom.com`.
-- Cuidado con los tres dominios, que son fáciles de confundir:
-  - `inducom-ec.com` → SMTP de **Zoho**, lo usa **Supabase Auth** (correo de recuperar
-    contraseña). Funcionando.
-  - `grupo-inducom.com` → dado de alta en **Resend**, para la notificación interna.
-  - `inducom.com` → no existe en ningún lado. Era el valor viejo, incorrecto.
-
-**⚠️ Pendientes para que el correo de notificación funcione (hoy NO envía):**
-
-1. **Verificar `grupo-inducom.com` en Resend.** La API lo reporta como `not_started` y
-   un envío de prueba devuelve `403: The grupo-inducom.com domain is not verified`. Hay
-   que agregar los registros DNS (SPF/DKIM) que da Resend en resend.com/domains.
-2. **Llenar `INTERNAL_NOTIFICATION_EMAIL`** en `.env` (y en Vercel). Está vacía, así que
-   el `if` de `route.ts` ni siquiera entra. Es el correo interno que recibe el aviso.
-
-**Nota sobre el correo de "olvidé mi contraseña":** no requirió ningún cambio de código.
-La plantilla HTML vive en el dashboard de Supabase (Authentication → Emails), sale por el
-SMTP de Zoho (`analista@inducom-ec.com`), y el `resetPasswordForEmail()` que ya existía en
-`ForgotPasswordForm.tsx` la dispara tal cual. Supabase Auth **solo** manda correos de
-autenticación — por eso la notificación de solicitud nueva necesita Resend aparte.
-
-**⚠️ Pendiente crítico (sigue abierto):** el commit `3d9c17d` de `feature/backend-ivan`
-publicó la `SUPABASE_SERVICE_ROLE_KEY` real en `.env.example`, que sí se sube a Git. Esa
-llave **ignora todo el RLS**: da lectura/escritura/borrado sobre toda la base y sobre el
-bucket privado con las cédulas y certificados bancarios de los clientes. Borrar el archivo
-**no basta** — queda en el historial. Hay que **rotar la llave** (Supabase → Settings →
-API → Rotate) y actualizar `.env` y las variables de Vercel.
-
-**Antes de desplegar a Vercel:** configurar Supabase → Authentication → **URL
-Configuration** con el dominio de producción en *Redirect URLs* (`https://…/**`). Sin eso,
-`redirectTo` apuntará a la URL de Vercel, Supabase la rechazará por no estar en la lista
-blanca, y el enlace del correo de recuperar contraseña no funcionará.
+- `validateStep2` (paso "Datos y documentos") solo pedía que `rucSolicitante` no
+  viniera vacío, sin validar el formato — a diferencia de `cedula` en v1, que ya tenía
+  `idOk` (10 u 13 dígitos). Se agregó `rucOk` en `validation.ts`:
+  `const rucOk = (v: string) => /^\d{13}$/.test((v || "").trim());` — a propósito
+  **distinta** de `idOk`: el RUC ecuatoriano son siempre 13 dígitos, ni más ni menos,
+  no "10 ó 13" como cédula/RUC combinados.
+- Usado en el paso 2: `if (!rucOk(s.datos.rucSolicitante)) e.rucSolicitante = "El RUC
+  debe tener 13 dígitos.";` — reemplaza el chequeo anterior de solo "no vacío".
+- Implementado por el usuario siguiendo el patrón ya explicado de `emailOk`/`idOk`; no
+  requiere cambios en `route.ts` porque la longitud ya la exige el input, pero
+  recordar que la validación de servidor de ese endpoint no revalida el formato de RUC
+  hoy — solo revisa que el campo no esté vacío. Quedaría como posible mejora futura
+  replicar `rucOk` también en el servidor, ya que la validación del navegador es solo
+  ayuda de UX.
 
 ---
 

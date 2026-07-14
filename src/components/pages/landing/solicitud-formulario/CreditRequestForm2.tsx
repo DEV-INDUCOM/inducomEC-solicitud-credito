@@ -192,11 +192,14 @@ export function CreditRequestForm2() {
         <div className="rounded-2xl bg-[var(--bg-surface)] p-7.5 shadow-md max-[640px]:p-5">
           {/* FORM STATUS
               El tono depende de lo que significa el error en cada paso:
-              - Steps 0 y 1: solo falta elegir una opción -> es un aviso (info).
+              - Steps 0 y 1: solo falta elegir una opción -> es un aviso (warning).
               - Step 2 (último): se intentó ENVIAR y faltan campos -> es una falla (error). */}
-          {Object.keys(errors).length > 0 && (
+          {/* some(Boolean), no length: al elegir una opción el onSelect vacía el
+              valor a "" pero no borra la clave, así que Object.keys nunca baja
+              a 0 y el banner se quedaba pegado tras corregir el campo. */}
+          {Object.values(errors).some(Boolean) && (
             <div className="mb-5.5">
-              <FormStatus tone={isLastStep ? "error" : "info"}>
+              <FormStatus tone={isLastStep ? "error" : "warning"}>
                 {isLastStep
                   ? "Revisa los campos marcados para continuar."
                   : "Selecciona una opción para continuar."}
@@ -208,7 +211,6 @@ export function CreditRequestForm2() {
           {state.step === 0 && (
             <Step0TwoOptions
               tipoSolicitud={state.tipoSolicitud}
-              errors={errors}
               onSelect={(value) =>
                 setState((s) => ({ ...s, tipoSolicitud: value, errors: { ...s.errors, tipoSolicitud: "" } }))
               }
@@ -218,7 +220,6 @@ export function CreditRequestForm2() {
           {state.step === 1 && (
             <Step1TipoCliente
               tipoCliente={state.tipoCliente}
-              errors={errors}
               onSelect={(value) =>
                 setState((s) => ({ ...s, tipoCliente: value, errors: { ...s.errors, tipoCliente: "" } }))
               }

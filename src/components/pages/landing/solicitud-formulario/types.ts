@@ -138,6 +138,7 @@ export const STEP_SHORT_LABELS = [
   "Revisión",
 ] as const;
 
+//! ***************************** VERSION 2 (3 pasos) *****************************
 
 // Version 2 of the steps
 export const STEP_SHORT_LABELS2 = [
@@ -146,6 +147,8 @@ export const STEP_SHORT_LABELS2 = [
   "Datos",
 
 ] as const;
+
+
 
 // Títulos largos del encabezado del Stepper para la versión 2 (3 pasos).
 export const STEP_TITLES2 = [

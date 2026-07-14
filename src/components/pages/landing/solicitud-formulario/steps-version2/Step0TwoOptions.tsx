@@ -1,15 +1,15 @@
 import { SelectCard } from "@/components/ui/SelectCard";
-import type { FormErrors, TipoSolicitud } from "../types";
+import type { TipoSolicitud } from "../types";
 
 // Primer paso del wizard v2: define si el resto del formulario pide
 // cotización/equipo (nueva solicitud) o no (apertura de línea).
+// El aviso de "falta elegir" ya lo muestra el FormStatus de CreditRequestForm2,
+// así que este componente no repite el mensaje por su cuenta.
 export function Step0TwoOptions({
   tipoSolicitud,
-  errors,
   onSelect,
 }: {
   tipoSolicitud: TipoSolicitud;
-  errors: FormErrors;
   onSelect: (value: Exclude<TipoSolicitud, "">) => void;
 }) {
   return (
@@ -32,9 +32,6 @@ export function Step0TwoOptions({
             onClick={() => onSelect("apertura")}
           />
         </div>
-        {errors.tipoSolicitud && (
-          <p className="mt-2 text-sm text-[var(--state-danger-text)]">{errors.tipoSolicitud}</p>
-        )}
       </div>
     </div>
   );

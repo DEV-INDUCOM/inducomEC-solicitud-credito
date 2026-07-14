@@ -1,7 +1,11 @@
 import type { FormErrors, WizardState, WizardState2 } from "./types";
 
+//? EXPRESIONES REGULARES PARA VALIDACIONES
 const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || "");
 const idOk = (v: string) => /^\d{10}$|^\d{13}$/.test((v || "").trim());
+const rucOk = (v: string) => /^\d{13}$/.test((v || "").trim());
+const numCotiOK = (v: string) => /^\d{8}-\d{9}$/.test((v || "").trim());
+
 
 // Réplica de validateStep() del prototipo de referencia: mismas reglas, un paso a la vez.
 export function validateStep(step: number, s: WizardState): FormErrors {
@@ -50,6 +54,9 @@ export function validateStep2(step: number, s: WizardState2): FormErrors {
   const e: FormErrors = {};
 
   if (step === 0) {
+    // El texto visible vive en el FormStatus de arriba (CreditRequestForm2.tsx),
+    // no en un <p> por tarjeta; el valor solo necesita ser no-vacío para que
+    // Object.values(errors).some(Boolean) active ese aviso.
     if (!s.tipoSolicitud) e.tipoSolicitud = "Selecciona el tipo de solicitud.";
   } else if (step === 1) {
     if (!s.tipoCliente) e.tipoCliente = "Selecciona el tipo de cliente.";
@@ -60,10 +67,13 @@ export function validateStep2(step: number, s: WizardState2): FormErrors {
     if (s.tipoCliente === "juridica" && !s.datos.razonSocial.trim()) {
       e.razonSocial = "Ingresa la razón social de la empresa.";
     }
-    if (!s.datos.rucSolicitante.trim()) e.rucSolicitante = "Ingresa el RUC actualizado del solicitante.";
+    if (!rucOk(s.datos.rucSolicitante)) e.rucSolicitante = "El RUC debe tener 13 dígitos.";
+
     // Cotización solo se exige en "nueva solicitud"; en apertura de línea el campo ni se muestra.
     if (s.tipoSolicitud === "nueva" && !s.datos.numeroCotizacion.trim()) {
-      e.numeroCotizacion = "Ingresa el número de cotización.";
+      if (!numCotiOK(s.datos.numeroCotizacion)) {
+        e.numeroCotizacion = "El número de cotización debe tener el formato correcto (Ej. 20260140-090280887).";
+      }
     }
     if (!s.datos.solicitudFirmada) e.solicitudFirmada = "Adjunta la solicitud de crédito firmada.";
     if (!s.datos.cedula) e.cedula = "Adjunta la cédula de identidad.";

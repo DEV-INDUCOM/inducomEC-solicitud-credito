@@ -1,16 +1,16 @@
 import { SelectCard } from "@/components/ui/SelectCard";
-import type { FormErrors, TipoCliente } from "../types";
+import type { TipoCliente } from "../types";
 
 // Segundo paso del wizard v2: solo pregunta persona natural vs. jurídica.
 // Los campos de datos personales que traía la v1 en este mismo paso se
 // movieron/eliminaron: aquí ya no se piden.
+// El aviso de "falta elegir" ya lo muestra el FormStatus de CreditRequestForm2,
+// así que este componente no repite el mensaje por su cuenta.
 export function Step1TipoCliente({
   tipoCliente,
-  errors,
   onSelect,
 }: {
   tipoCliente: TipoCliente;
-  errors: FormErrors;
   onSelect: (value: Exclude<TipoCliente, "">) => void;
 }) {
   return (
@@ -33,9 +33,6 @@ export function Step1TipoCliente({
             onClick={() => onSelect("juridica")}
           />
         </div>
-        {errors.tipoCliente && (
-          <p className="mt-2 text-sm text-[var(--state-danger-text)]">{errors.tipoCliente}</p>
-        )}
       </div>
     </div>
   );
