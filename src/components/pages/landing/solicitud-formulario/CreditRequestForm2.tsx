@@ -13,7 +13,8 @@ import { validateStep2 } from "./validation";
 import { blankState2, TOTAL_STEPS2, type DatosStep2, type WizardState2 } from "./types";
 
 type DatosTextField =
-  | "nombreSolicitante"
+  | "nombres"
+  | "apellidos"
   | "emailSolicitante"
   | "razonSocial"
   | "rucSolicitante"
@@ -26,7 +27,7 @@ type DatosFileField = Exclude<keyof DatosStep2, DatosTextField | "aceptaConsenti
 export function CreditRequestForm2() {
   const [state, setState] = useState<WizardState2>(blankState2);
   const [status, setStatus] = useState<{ tone: FormStatusTone; message: string } | null>(null);
-  const [folio, setFolio] = useState<string | null>(null);
+  const [numeroSolicitud, setNumeroSolicitud] = useState<string | null>(null);
   // Honeypot: campo invisible para personas, que los bots de spam sí suelen
   // rellenar. Si llega con contenido, el servidor finge éxito sin procesar.
   const [website, setWebsite] = useState("");
@@ -65,14 +66,15 @@ export function CreditRequestForm2() {
   function reset() {
     setState(blankState2());
     setStatus(null);
-    setFolio(null);
+    setNumeroSolicitud(null);
   }
 
   async function submit() {
     setStatus({ tone: "loading", message: "Enviando solicitud…" });
 
     const {
-      nombreSolicitante,
+      nombres,
+      apellidos,
       emailSolicitante,
       razonSocial,
       rucSolicitante,
@@ -94,7 +96,11 @@ export function CreditRequestForm2() {
       JSON.stringify({
         tipoSolicitud: state.tipoSolicitud,
         tipoCliente: state.tipoCliente,
-        nombreSolicitante,
+        // El servidor arma nombreSolicitante concatenando estos dos: es la
+        // única fuente de verdad, así no puede haber un nombre completo que
+        // no coincida con nombres/apellidos que sí llegaron al servidor.
+        nombres,
+        apellidos,
         emailSolicitante,
         // Solo tiene sentido en jurídica; en natural se manda vacío y el servidor lo guarda como null.
         razonSocial: state.tipoCliente === "juridica" ? razonSocial : "",
@@ -118,10 +124,10 @@ export function CreditRequestForm2() {
 
     try {
       const res = await fetch("/api/solicitud-credito", { method: "POST", body });
-      const result = (await res.json()) as { ok: boolean; folio?: string; message?: string };
+      const result = (await res.json()) as { ok: boolean; numeroSolicitud?: string; message?: string };
 
       if (res.ok && result.ok) {
-        setFolio(result.folio ?? `SOL-${String(Date.now()).slice(-6)}`);
+        setNumeroSolicitud(result.numeroSolicitud ?? `SOL-${String(Date.now()).slice(-6)}`);
         setState((s) => ({ ...s, submitted: true, errors: {} }));
         setStatus(null);
         window.scrollTo({ top: 0 });
@@ -154,8 +160,8 @@ export function CreditRequestForm2() {
     window.scrollTo({ top: 0 });
   }
 
-  if (state.submitted && folio) {
-    const summaryName = state.datos.nombreSolicitante.trim() || "—";
+  if (state.submitted && numeroSolicitud) {
+    const summaryName = `${state.datos.nombres.trim()} ${state.datos.apellidos.trim()}`.trim() || "—";
     const summaryFin =
       state.tipoSolicitud === "nueva" && state.datos.numeroCotizacion.trim()
         ? `Cotización ${state.datos.numeroCotizacion.trim()}`
@@ -165,7 +171,7 @@ export function CreditRequestForm2() {
 
     return (
       <div className="mx-auto max-w-[55rem] px-6 py-10 max-[640px]:px-4">
-        <SuccessScreen summaryName={summaryName} summaryFin={summaryFin} folio={folio} onReset={reset} />
+        <SuccessScreen summaryName={summaryName} summaryFin={summaryFin} numeroSolicitud={numeroSolicitud} onReset={reset} />
       </div>
     );
   }

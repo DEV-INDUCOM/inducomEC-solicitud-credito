@@ -29,7 +29,7 @@ function blankRow(list: ListKey) {
 export function CreditRequestForm() {
   const [state, setState] = useState<WizardState>(blankState);
   const [status, setStatus] = useState<{ tone: FormStatusTone; message: string } | null>(null);
-  const [folio, setFolio] = useState<string | null>(null);
+  const [numeroSolicitud, setNumeroSolicitud] = useState<string | null>(null);
   // Honeypot: campo invisible para personas, que los bots de spam sí suelen
   // rellenar. Si llega con contenido, el servidor finge éxito sin procesar.
   const [website, setWebsite] = useState("");
@@ -73,7 +73,7 @@ export function CreditRequestForm() {
   function reset() {
     setState(blankState());
     setStatus(null);
-    setFolio(null);
+    setNumeroSolicitud(null);
   }
 
   async function submit() {
@@ -91,10 +91,10 @@ export function CreditRequestForm() {
 
     try {
       const res = await fetch("/api/solicitud-credito", { method: "POST", body });
-      const result = (await res.json()) as { ok: boolean; folio?: string; message?: string };
+      const result = (await res.json()) as { ok: boolean; numeroSolicitud?: string; message?: string };
 
       if (res.ok && result.ok) {
-        setFolio(result.folio ?? `SOL-${String(Date.now()).slice(-6)}`);
+        setNumeroSolicitud(result.numeroSolicitud ?? `SOL-${String(Date.now()).slice(-6)}`);
         setState((s) => ({ ...s, submitted: true, errors: {} }));
         setStatus(null);
         window.scrollTo({ top: 0 });
@@ -127,7 +127,7 @@ export function CreditRequestForm() {
     window.scrollTo({ top: 0 });
   }
 
-  if (state.submitted && folio) {
+  if (state.submitted && numeroSolicitud) {
     const summaryName =
       state.datos.razonSocial.trim() ||
       `${state.datos.nombres} ${state.datos.apellidos}`.trim() ||
@@ -141,7 +141,7 @@ export function CreditRequestForm() {
 
     return (
       <div className="mx-auto max-w-[55rem] px-6 py-10 max-[640px]:px-4">
-        <SuccessScreen summaryName={summaryName} summaryFin={summaryFin} folio={folio} onReset={reset} />
+        <SuccessScreen summaryName={summaryName} summaryFin={summaryFin} numeroSolicitud={numeroSolicitud} onReset={reset} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
-export type IncentivoTipo = "cashback_1" | "garantia_extendida" | "despacho_rapido";
+export type IncentivoTipo = "cashback_1" | "garantia_extendida";
 
-export interface PortalEmpresa {
+export interface PortalCliente {
   id: string;
   nombre: string;
   pais: string | null;
@@ -10,12 +10,12 @@ export interface PortalEmpresa {
 export interface PortalPerfil {
   id: string;
   email: string;
-  empresaId: string;
+  clienteId: string;
 }
 
 export interface PortalContext {
   perfil: PortalPerfil;
-  empresa: PortalEmpresa;
+  cliente: PortalCliente;
 }
 
 export interface PortalPago {

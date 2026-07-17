@@ -35,7 +35,7 @@ export function RegisterForm() {
       return;
     }
 
-    // El código se consume solo al crear la cuenta para no gastarlo antes.
+    //? El código se consume solo al crear la cuenta para no gastarlo antes.
     setCode(result.data.code);
     setStep("account");
     setStatus(null);

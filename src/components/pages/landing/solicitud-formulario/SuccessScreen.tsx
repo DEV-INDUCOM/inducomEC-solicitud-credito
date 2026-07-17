@@ -6,14 +6,14 @@ import { routes } from "@/lib/config/site";
 export function SuccessScreen({
   summaryName,
   summaryFin,
-  folio,
+  numeroSolicitud,
   onReset,
 }: {
   summaryName: string;
   summaryFin: string;
-  folio: string;
+  numeroSolicitud: string;
   onReset: () => void;
-}) {
+}) {  
   return (
     <div className="rounded-2xl bg-[var(--bg-surface)] p-9 text-center shadow-md max-[640px]:p-6">
       <div className="mx-auto mb-4.5 flex h-18 w-18 items-center justify-center rounded-full bg-[var(--state-success-bg)]">
@@ -40,9 +40,9 @@ export function SuccessScreen({
         </div>
         <div className="flex justify-between px-4 py-3">
           <span className="font-mono text-xs font-medium tracking-[0.06em] text-[var(--text-muted)] uppercase">
-            Folio
+            N.º de referencia
           </span>
-          <span className="font-mono text-sm font-semibold text-[var(--accent)]">{folio}</span>
+          <span className="font-mono text-sm font-semibold text-[var(--accent)]">{numeroSolicitud}</span>
         </div>
       </div>
 

@@ -4,7 +4,8 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import type { DatosStep2, FormErrors, TipoCliente, TipoSolicitud } from "../types";
 
 type TextField =
-  | "nombreSolicitante"
+  | "nombres"
+  | "apellidos"
   | "emailSolicitante"
   | "razonSocial"
   | "rucSolicitante"
@@ -45,11 +46,18 @@ export function Step2Datos({
       {/* Datos del solicitante: requeridos por la tabla (nombre y correo NOT NULL). */}
       <div className="grid grid-cols-2 gap-x-4.5 gap-y-3.5 max-[560px]:grid-cols-1">
         <Input
-          label="Nombre del solicitante"
-          placeholder="Nombres y apellidos"
-          value={datos.nombreSolicitante}
-          onChange={(e) => onFieldChange("nombreSolicitante", e.target.value)}
-          error={errors.nombreSolicitante}
+          label="Nombres del solicitante"
+          placeholder="Ej. Juan Carlos"
+          value={datos.nombres}
+          onChange={(e) => onFieldChange("nombres", e.target.value)}
+          error={errors.nombres}
+        />
+        <Input
+          label="Apellidos del solicitante"
+          placeholder="Ej. Pérez López"
+          value={datos.apellidos}
+          onChange={(e) => onFieldChange("apellidos", e.target.value)}
+          error={errors.apellidos}
         />
         <Input
           label="Correo del solicitante"

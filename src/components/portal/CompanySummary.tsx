@@ -1,18 +1,18 @@
 import { IconBuilding, IconMail, IconWorld } from "@tabler/icons-react";
 import { Card, IconTile } from "@/components/ui/Card";
-import type { PortalEmpresa, PortalPerfil } from "@/lib/portal/types";
+import type { PortalCliente, PortalPerfil } from "@/lib/portal/types";
 
-export function CompanySummary({ empresa, perfil }: { empresa: PortalEmpresa; perfil: PortalPerfil }) {
+export function CompanySummary({ cliente, perfil }: { cliente: PortalCliente; perfil: PortalPerfil }) {
   const rows = [
-    { icon: IconBuilding, label: "Empresa", value: empresa.nombre },
-    { icon: IconWorld, label: "País", value: empresa.pais ?? "No disponible" },
+    { icon: IconBuilding, label: "Cliente", value: cliente.nombre },
+    { icon: IconWorld, label: "País", value: cliente.pais ?? "No disponible" },
     { icon: IconMail, label: "Correo", value: perfil.email },
   ];
 
   return (
     <Card shadow className="flex flex-col gap-4">
       <p className="font-mono text-xs font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase">
-        Información de la empresa
+        Información de la cuenta
       </p>
       <ul className="flex flex-col gap-3">
         {rows.map(({ icon: Icon, label, value }) => (

@@ -454,17 +454,51 @@ separados), `StatCard`.
   replicar `rucOk` también en el servidor, ya que la validación del navegador es solo
   ayuda de UX.
 
----
 
-<!--
-Plantilla para nuevas sesiones — copiar y completar:
 
-## Sesión — YYYY-MM-DD
 
-**Cambios de esta sesión:**
+## Sesión — 2026-07-16
+
+**Migracion de la base de datos**
 
 - Qué se cambió / agregó / arregló.
-  - Para qué sirve / por qué se hizo.
-- ...
 
--->
+### Se corrio el arhicvo 20260715000000_reconciliar_registro_y_cerrar_anon.sql 
+
+  - Se corrio este codigo sql con el fin de dejar definido lo que realmente funciona y actualemente se esta usando en este proyecto, tambien para dejar definido y tener claro las polcies, functions que se hace uso y poder continuar con el crecimiento y desarrollo de este proyeto y la base de datos sin problema.
+
+### Se corre el archivo limpieza-data-demo.sql 
+
+  - Se corre este codigo sql para limpiar toda la data de prueba ingresada en la base de datos con el fin de empezar de cero con un proceso mas completo y avanzar mas alla del MVP y acercarse mas a la version para produccion.
+
+## Resumen 
+
+**Functions and policies que actualmente estan funcionando y se usan**
+
+| Función | Para qué sirve | Quién la ejecuta |
+|---|---|---|
+| `consumir_codigo_invitacion(text)` | Consume el código al registrarse (1 arg) | `authenticated` — la llama tu `RegisterForm` desde el navegador |
+| `aprobar_solicitud_credito(uuid, int)` | Aprueba una solicitud: crea/vincula la empresa y genera su código de invitación | `service_role` — manual, desde el SQL Editor |
+| `generar_codigo_invitacion(uuid, int)` | Genera el código `IND-EC-...` | `service_role` — la llama internamente `aprobar_solicitud_credito` |
+| `set_updated_at()` | Trigger que mantiene la columna `updated_at` al día | automático, en cada `UPDATE` |
+| `rls_auto_enable` | Event trigger: activa RLS solo en tablas nuevas | automático, de infraestructura
+
+**Policies RLS que actualmente estan funcionando y se usan**
+
+| Policy | Tabla | Qué permite |
+|---|---|---|
+| `lectura pública de países` | `paises` | cualquiera lee el catálogo (no es sensible) |
+| `usuarios ven su propio perfil` | `perfiles` | cada quien ve solo su propia fila (`auth.uid() = id`) |
+| `usuarios ven su propia empresa` | `empresas` | solo la empresa vinculada a tu perfil, nunca otra |
+| `usuarios ven los pagos de su empresa` | `pagos` | pagos aislados por `empresa_id`; sin INSERT/UPDATE/DELETE desde la app |
+| `usuarios ven el incentivo de su empresa` | `incentivos_empresa` | mismo aislamiento por `empresa_id` |
+
+`solicitudes_credito`, `documentos_credito` y `codigos_invitacion` tienen RLS
+activo pero **sin ninguna policy pública de lectura ni de INSERT** (las de INSERT a
+`anon` se cerraron en `20260715000000_reconciliar_registro_y_cerrar_anon.sql`) — solo
+`service_role` puede tocarlas, que es justo el cliente que usa `route.ts`.
+
+
+### Explicacion de flujo de registro con codigo y el uso de consumir_codigo_invitacion(text)
+
+- La primera vista del form de registro muestra el input para ingresar el codigo cuyo objetivo tiene que solo las empresas o contactos que considere INDUCOM generarle un codigo es enviado a sus correos opcion que se podra usar desde el portal administrativo, donde se habra tarjetas para su generacion inmediata pero claro primero se tendra que llenar al menos el correo de quien se le enviara, como consiguente el receptor hace consume el codigo, pero primero hay que corregir algo en el flujo, actualmente no se valida que el codigo sea valido donde se ingreso sino despues de llenar los datos del usuario es que recien hace validacion de codigo, entonces primero antes de presionar VALIDAR CODIGO, primero se llamara x funcion que haga la respectiva validacion a la base de datos mediante un query porque aunque el cliente copie y pegue el codigo puede que eso mitigue muchos errores, pero igual hay que validar 2 cosas, 1. el codigo exista, este activo y claro este dentro de la fecha de vencimiento, claro un punto importante es que cuando la fecha de vencimiento termine mediante un trigger se tendra que cambiar el estado automaticamente.

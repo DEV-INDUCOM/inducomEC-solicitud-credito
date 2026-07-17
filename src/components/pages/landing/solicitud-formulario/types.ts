@@ -164,8 +164,12 @@ export type TipoSolicitud = "" | "nueva" | "apertura";
 
 export interface DatosStep2 {
   // Datos del solicitante: la tabla solicitudes_credito exige nombre y correo
-  // (columnas NOT NULL), por eso v2 también los recolecta.
-  nombreSolicitante: string;
+  // (columnas NOT NULL), por eso v2 también los recolecta. Separados (en vez
+  // de un solo "nombre completo") porque persona_naturales los guarda así:
+  // sin esto, aprobar_solicitud_credito tendría que adivinar dónde cortar un
+  // nombre compuesto para partirlo en nombres/apellidos.
+  nombres: string;
+  apellidos: string;
   emailSolicitante: string;
   // Solo aplica a persona jurídica; se guarda en la columna nombre_empresa.
   razonSocial: string;
@@ -201,7 +205,8 @@ export function blankState2(): WizardState2 {
     tipoSolicitud: "",
     tipoCliente: "",
     datos: {
-      nombreSolicitante: "",
+      nombres: "",
+      apellidos: "",
       emailSolicitante: "",
       razonSocial: "",
       rucSolicitante: "",

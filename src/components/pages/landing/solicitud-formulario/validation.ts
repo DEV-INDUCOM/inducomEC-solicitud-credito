@@ -61,7 +61,8 @@ export function validateStep2(step: number, s: WizardState2): FormErrors {
   } else if (step === 1) {
     if (!s.tipoCliente) e.tipoCliente = "Selecciona el tipo de cliente.";
   } else if (step === 2) {
-    if (!s.datos.nombreSolicitante.trim()) e.nombreSolicitante = "Ingresa el nombre del solicitante.";
+    if (!s.datos.nombres.trim()) e.nombres = "Ingresa los nombres del solicitante.";
+    if (!s.datos.apellidos.trim()) e.apellidos = "Ingresa los apellidos del solicitante.";
     if (!emailOk(s.datos.emailSolicitante)) e.emailSolicitante = "Correo inválido.";
     // La razón social solo se pide (y se guarda) para persona jurídica.
     if (s.tipoCliente === "juridica" && !s.datos.razonSocial.trim()) {

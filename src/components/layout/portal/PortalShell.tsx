@@ -6,7 +6,7 @@ import { MobilePortalNavigation } from "./MobilePortalNavigation";
 import { PortalSidebar } from "./PortalSidebar";
 import { PortalTopbar } from "./PortalTopbar";
 
-export function PortalShell({ children, empresaNombre }: { children: ReactNode; empresaNombre?: string }) {
+export function PortalShell({ children, clienteNombre }: { children: ReactNode; clienteNombre?: string }) {
   const [open, setOpen] = useState(false);
 
   // Cierra el drawer móvil con Escape (accesibilidad de un diálogo modal).
@@ -27,7 +27,7 @@ export function PortalShell({ children, empresaNombre }: { children: ReactNode; 
     <div className="flex h-screen overflow-hidden bg-[var(--bg-page)]">
       <PortalSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <PortalTopbar onMenuClick={() => setOpen(true)} empresaNombre={empresaNombre} />
+        <PortalTopbar onMenuClick={() => setOpen(true)} clienteNombre={clienteNombre} />
         <main className="page-container w-full flex-1 overflow-y-auto py-8 md:py-10">{children}</main>
       </div>
       <MobilePortalNavigation open={open} onClose={() => setOpen(false)} />

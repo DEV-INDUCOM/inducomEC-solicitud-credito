@@ -6,10 +6,10 @@ import { LogoutButton } from "./LogoutButton";
 
 export function PortalTopbar({
   onMenuClick,
-  empresaNombre,
+  clienteNombre,
 }: {
   onMenuClick: () => void;
-  empresaNombre?: string;
+  clienteNombre?: string;
 }) {
   return (
     <header className="flex h-22 shrink-0 items-center justify-between gap-4 border-b border-[color:var(--border)] bg-[var(--bg-surface)] px-4 md:px-8">
@@ -25,8 +25,8 @@ export function PortalTopbar({
         <div className="md:hidden">
           <Logo variant="full" imageClassName="h-8 w-auto" width={290} height={100} />
         </div>
-        {empresaNombre && (
-          <p className="hidden text-sm font-medium text-[var(--text-secondary)] md:block">{empresaNombre}</p>
+        {clienteNombre && (
+          <p className="hidden text-sm font-medium text-[var(--text-secondary)] md:block">{clienteNombre}</p>
         )}
       </div>
       <LogoutButton />

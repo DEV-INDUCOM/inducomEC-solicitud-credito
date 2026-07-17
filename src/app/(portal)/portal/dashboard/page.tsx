@@ -7,6 +7,7 @@ import { CompanySummary } from "@/components/portal/CompanySummary";
 import { PaymentHistory } from "@/components/portal/PaymentHistory";
 import { StatCard } from "@/components/portal/StatCard";
 import { formatFecha } from "@/lib/portal/format";
+import { calcularSaldoAcumulado } from "@/lib/portal/incentivos";
 import { portalNavItems } from "@/lib/portal/nav";
 import { getPagos, getPortalContext, getSaldo } from "@/lib/portal/queries";
 
@@ -22,22 +23,22 @@ export default async function DashboardPage() {
   // renderizar esta página; esta rama es solo defensa de tipos.
   if (!context.ok) return null;
 
-  const { perfil, empresa } = context.data;
-  const [saldoResult, pagosResult] = await Promise.all([getSaldo(empresa.id), getPagos(empresa.id)]);
+  const { perfil, cliente } = context.data;
+  const [saldoResult, pagosResult] = await Promise.all([getSaldo(cliente.id), getPagos(cliente.id)]);
 
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl">Bienvenido, {empresa.nombre}</h1>
+        <h1 className="text-3xl">Bienvenido, {cliente.nombre}</h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Consulta tu saldo, el historial de pagos y el incentivo activo de tu empresa.
+          Consulta tu saldo, el historial de pagos y el incentivo activo de tu cuenta.
         </p>
       </div>
 
       {saldoResult.ok && pagosResult.ok ? (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <BalanceCard
-            saldo={saldoResult.saldo}
+            saldo={calcularSaldoAcumulado(saldoResult.saldo, cliente.incentivoActivo)}
             ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null}
           />
           <StatCard
@@ -49,7 +50,7 @@ export default async function DashboardPage() {
                 : "Sin pagos aún"
             }
           />
-          <BenefitCard incentivo={empresa.incentivoActivo} />
+          <BenefitCard incentivo={cliente.incentivoActivo} />
         </div>
       ) : (
         <ErrorState title="No pudimos cargar tu saldo ni tus pagos" />
@@ -64,7 +65,7 @@ export default async function DashboardPage() {
             <ErrorState title="No pudimos cargar tus pagos" />
           )}
         </section>
-        <CompanySummary empresa={empresa} perfil={perfil} />
+        <CompanySummary cliente={cliente} perfil={perfil} />
       </div>
 
       <section className="flex flex-col gap-4">

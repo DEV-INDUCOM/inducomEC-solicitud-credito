@@ -29,7 +29,7 @@ export default async function PortalGroupLayout({ children }: { children: React.
               </IconTile>
             }
             title="Tu cuenta no tiene acceso al portal"
-            description="Tu sesión es válida, pero no está asociada a ninguna empresa. Contacta a INDUCOM para resolverlo."
+            description="Tu sesión es válida, pero no está asociada a ninguna cuenta de cliente. Contacta a INDUCOM para resolverlo."
             action={<LogoutButton />}
           />
         </div>
@@ -49,7 +49,7 @@ export default async function PortalGroupLayout({ children }: { children: React.
 
   return (
     <div data-surface="portal">
-      <PortalShell empresaNombre={context.data.empresa.nombre}>{children}</PortalShell>
+      <PortalShell clienteNombre={context.data.cliente.nombre}>{children}</PortalShell>
     </div>
   );
 }

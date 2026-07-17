@@ -5,6 +5,7 @@ import { BalanceCard } from "@/components/portal/BalanceCard";
 import { BenefitCard } from "@/components/portal/BenefitCard";
 import { IncentiveComparison } from "@/components/portal/ComparisonCard";
 import { PaymentHistory } from "@/components/portal/PaymentHistory";
+import { calcularSaldoAcumulado } from "@/lib/portal/incentivos";
 import { getPagos, getPortalContext, getSaldo } from "@/lib/portal/queries";
 
 export const metadata: Metadata = {
@@ -17,15 +18,15 @@ export default async function PaypalPage() {
   // renderizar esta página; esta rama es solo defensa de tipos.
   if (!context.ok) return null;
 
-  const { empresa } = context.data;
-  const [saldoResult, pagosResult] = await Promise.all([getSaldo(empresa.id), getPagos(empresa.id)]);
+  const { cliente } = context.data;
+  const [saldoResult, pagosResult] = await Promise.all([getSaldo(cliente.id), getPagos(cliente.id)]);
 
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl">Módulo PayPal</h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Saldo derivado de pagos, historial e incentivo activo de {empresa.nombre}.
+          Saldo derivado de pagos, historial e incentivo activo de {cliente.nombre}.
         </p>
       </div>
 
@@ -35,8 +36,11 @@ export default async function PaypalPage() {
 
       {saldoResult.ok && pagosResult.ok ? (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <BalanceCard saldo={saldoResult.saldo} ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null} />
-          <BenefitCard incentivo={empresa.incentivoActivo} />
+          <BalanceCard
+            saldo={calcularSaldoAcumulado(saldoResult.saldo, cliente.incentivoActivo)}
+            ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null}
+          />
+          <BenefitCard incentivo={cliente.incentivoActivo} />
         </div>
       ) : (
         <ErrorState title="No pudimos cargar tu saldo ni tu incentivo" />
@@ -55,9 +59,9 @@ export default async function PaypalPage() {
         <h2 className="text-xl font-semibold text-[var(--text-primary)]">Comparador de incentivos</h2>
         <p className="text-sm text-[var(--text-secondary)] leading-normal">
           Estos son los beneficios disponibles para clientes INDUCOM. El resaltado en acero muestra el que
-          está activo actualmente para tu empresa.
+          está activo actualmente para tu cuenta.
         </p>
-        <IncentiveComparison activo={empresa.incentivoActivo} />
+        <IncentiveComparison activo={cliente.incentivoActivo} />
       </section>
     </div>
   );

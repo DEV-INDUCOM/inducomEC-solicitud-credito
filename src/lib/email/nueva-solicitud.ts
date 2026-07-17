@@ -21,7 +21,7 @@
  */
 
 export type NuevaSolicitudEmailData = {
-  folio: string;
+  numeroSolicitud: string;
   tipoSolicitud: string;
   tipoCliente: string;
   nombreSolicitante: string;
@@ -149,7 +149,7 @@ export function renderNuevaSolicitudEmail(data: NuevaSolicitudEmailData) {
                       Folio
                     </div>
                     <div style="margin: 0; color: #00005B; font-size: 22px; line-height: 1.3; font-weight: 700; letter-spacing: 1px;">
-                      ${escapeHtml(data.folio)}
+                      ${escapeHtml(data.numeroSolicitud)}
                     </div>
                   </td>
                 </tr>
@@ -211,7 +211,7 @@ export function renderNuevaSolicitudEmail(data: NuevaSolicitudEmailData) {
   // Versión de texto plano: algunos clientes la usan como preview, y evita que el
   // correo se marque como spam por venir solo en HTML.
   const text = [
-    `Nueva solicitud de crédito — ${data.folio}`,
+    `Nueva solicitud de crédito — ${data.numeroSolicitud}`,
     "",
     `Tipo de solicitud: ${label(TIPO_SOLICITUD_LABEL, data.tipoSolicitud)}`,
     `Tipo de cliente: ${label(TIPO_CLIENTE_LABEL, data.tipoCliente)}`,

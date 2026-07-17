@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
   // Honeypot: un humano nunca llena ni ve este campo.
   if (nonEmpty(form.get("website"))) {
-    return NextResponse.json({ ok: true, folio: `SOL-${String(Date.now()).slice(-6)}` });
+    return NextResponse.json({ ok: true, numeroSolicitud: `SOL-${String(Date.now()).slice(-6)}` });
   }
 
   const rawData = form.get("data");
@@ -138,7 +138,8 @@ export async function POST(request: Request) {
   const errors: string[] = [];
   if (data.tipoSolicitud !== "nueva" && data.tipoSolicitud !== "apertura") errors.push("tipoSolicitud");
   if (data.tipoCliente !== "natural" && data.tipoCliente !== "juridica") errors.push("tipoCliente");
-  if (!nonEmpty(data.nombreSolicitante)) errors.push("nombreSolicitante");
+  if (!nonEmpty(data.nombres)) errors.push("nombres");
+  if (!nonEmpty(data.apellidos)) errors.push("apellidos");
   if (!emailOk(data.emailSolicitante)) errors.push("emailSolicitante");
   if (!nonEmpty(data.rucSolicitante)) errors.push("rucSolicitante");
   // La razón social solo se exige a persona jurídica; en natural no aplica.
@@ -201,7 +202,10 @@ export async function POST(request: Request) {
   // ===== Inserción v2 (steps-version2) =====
   // v2 no captura teléfono (columna nullable), así que va null.
   // identificacion se mapea desde el RUC del solicitante.
-  const nombreSolicitante = String(data.nombreSolicitante).trim();
+  // nombreSolicitante se arma en servidor (no se confía en un valor ya
+  // concatenado del cliente): es la única fuente de verdad para la columna
+  // nombre_solicitante y para el correo de notificación.
+  const nombreSolicitante = `${String(data.nombres).trim()} ${String(data.apellidos).trim()}`.trim();
   // nombre_empresa solo se llena en persona jurídica (con la razón social);
   // en persona natural no hay empresa, así que queda null.
   const nombreEmpresa =
@@ -227,7 +231,7 @@ export async function POST(request: Request) {
     return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
   }
 
-  const folio = `SOL-${solicitud.id.slice(0, 8).toUpperCase()}`;
+  const numeroSolicitud = `SOL-${solicitud.id.slice(0, 8).toUpperCase()}`;
   const uploadedPaths: string[] = [];
 
   // La solicitud ya existe para obtener un UUID estable. Si falla una subida
@@ -240,7 +244,7 @@ export async function POST(request: Request) {
       .upload(path, file, { contentType: file.type, upsert: false });
 
     if (uploadError) {
-      console.error(`Fallo al subir adjunto "${key}" de la solicitud ${folio}:`, uploadError);
+      console.error(`Fallo al subir adjunto "${key}" de la solicitud ${numeroSolicitud}:`, uploadError);
       await Promise.all(uploadedPaths.map((uploadedPath) => supabase.storage.from(ADJUNTOS_BUCKET).remove([uploadedPath])));
       await supabase.from("solicitudes_credito").delete().eq("id", solicitud.id);
       return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
@@ -261,7 +265,7 @@ export async function POST(request: Request) {
     : { error: null };
 
   if (documentosError) {
-    console.error(`Fallo al guardar documentos de la solicitud ${folio}:`, documentosError);
+    console.error(`Fallo al guardar documentos de la solicitud ${numeroSolicitud}:`, documentosError);
     await Promise.all(uploadedPaths.map((uploadedPath) => supabase.storage.from(ADJUNTOS_BUCKET).remove([uploadedPath])));
     await supabase.from("solicitudes_credito").delete().eq("id", solicitud.id);
     return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
@@ -274,7 +278,7 @@ export async function POST(request: Request) {
       // Mismo diseño que la plantilla de Supabase Auth. Se le pasan las claves de
       // los adjuntos que sí llegaron, no las 7 posibles.
       const { html, text } = renderNuevaSolicitudEmail({
-        folio,
+        numeroSolicitud,
         tipoSolicitud: String(data.tipoSolicitud),
         tipoCliente: String(data.tipoCliente),
         nombreSolicitante,
@@ -293,14 +297,14 @@ export async function POST(request: Request) {
         to: serverEnv.internalNotificationEmail,
         // Responder al correo cae directo en el buzón del cliente, no en el vacío.
         replyTo: String(data.emailSolicitante).trim().toLowerCase(),
-        subject: `Nueva solicitud de crédito — ${folio}`,
+        subject: `Nueva solicitud de crédito — ${numeroSolicitud}`,
         html,
         text,
       });
     } catch (error) {
-      console.error(`Fallo al enviar notificación de la solicitud ${folio}:`, error);
+      console.error(`Fallo al enviar notificación de la solicitud ${numeroSolicitud}:`, error);
     }
   }
 
-  return NextResponse.json({ ok: true, folio });
+  return NextResponse.json({ ok: true, numeroSolicitud });
 }

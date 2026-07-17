@@ -38,4 +38,11 @@ export const routes = {
   updatePassword: "/portal/actualizar-contrasena",
   dashboard: "/portal/dashboard",
   paypal: "/portal/paypal",
+  adminLogin: "/admin/login",
+  adminResumen: "/admin",
+  adminSolicitudes: "/admin/solicitudes",
+  adminEmpresas: "/admin/empresas",
+  adminPagos: "/admin/pagos",
+  adminCodigos: "/admin/codigos",
+  adminPerfil: "/admin/perfil",
 };
