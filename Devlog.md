@@ -502,3 +502,9 @@ activo pero **sin ninguna policy pública de lectura ni de INSERT** (las de INSE
 ### Explicacion de flujo de registro con codigo y el uso de consumir_codigo_invitacion(text)
 
 - La primera vista del form de registro muestra el input para ingresar el codigo cuyo objetivo tiene que solo las empresas o contactos que considere INDUCOM generarle un codigo es enviado a sus correos opcion que se podra usar desde el portal administrativo, donde se habra tarjetas para su generacion inmediata pero claro primero se tendra que llenar al menos el correo de quien se le enviara, como consiguente el receptor hace consume el codigo, pero primero hay que corregir algo en el flujo, actualmente no se valida que el codigo sea valido donde se ingreso sino despues de llenar los datos del usuario es que recien hace validacion de codigo, entonces primero antes de presionar VALIDAR CODIGO, primero se llamara x funcion que haga la respectiva validacion a la base de datos mediante un query porque aunque el cliente copie y pegue el codigo puede que eso mitigue muchos errores, pero igual hay que validar 2 cosas, 1. el codigo exista, este activo y claro este dentro de la fecha de vencimiento, claro un punto importante es que cuando la fecha de vencimiento termine mediante un trigger se tendra que cambiar el estado automaticamente.
+
+
+
+**Flujo de la creacion de codigo 
+https://claude.ai/code/artifact/12ca1cff-ed57-4f6b-bdd6-47431a47e857?via=auto_preview 
+
