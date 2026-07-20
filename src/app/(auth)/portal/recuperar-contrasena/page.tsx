@@ -21,14 +21,20 @@ const features = [
   },
 ];
 
-export default function ForgotPasswordPage() {
+// searchParams es async en Next 16; leemos ?origen para saber si el reset viene del admin
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ origen?: string }>;
+}) {
+  const { origen } = await searchParams;
   return (
     <AuthSplitLayout
       heading="Portal de Clientes INDUCOM"
       description="Restablece tu contraseña para volver a acceder a tu cuenta."
       features={features}
     >
-      <ForgotPasswordForm />
+      <ForgotPasswordForm origen={origen} />
     </AuthSplitLayout>
   );
 }

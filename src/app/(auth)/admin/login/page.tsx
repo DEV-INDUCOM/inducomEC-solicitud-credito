@@ -46,6 +46,7 @@ export default function AdminLoginPage() {
       heading="Panel administrativo INDUCOM"
       description="Gestiona solicitudes de crédito, empresas, pagos y códigos de invitación."
       features={features}
+      tone="black" // split negro solo en el admin
       note={<Alert variant="onDark">Este acceso es exclusivo para personal interno de INDUCOM.</Alert>}
     >
       <AdminLoginForm />

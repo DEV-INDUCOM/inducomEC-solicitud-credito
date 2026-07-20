@@ -5,7 +5,7 @@ import type { IncentivoTipo, PortalContext, PortalPago } from "./types";
 
 export type PortalContextResult =
   | { ok: true; data: PortalContext }
-  | { ok: false; reason: "sin-sesion" | "sin-perfil" | "error" };
+  | { ok: false; reason: "sin-sesion" | "sin-perfil" | "cliente-inactivo" | "error" };
 
 /**
  * Perfil + cliente (persona natural o jurídica) del usuario autenticado. El
@@ -35,7 +35,7 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
   // personas_naturales/empresas): es el mismo nombre para ambos tipos hoy.
   const { data: clienteRaw, error: clienteError } = await supabase
     .from("clientes")
-    .select("id, nombre_visible, paises(nombre)")
+    .select("id, nombre_visible, activo, paises(nombre)")
     .eq("id", perfil.cliente_id)
     .maybeSingle();
   if (clienteError) return { ok: false, reason: "error" };
@@ -46,8 +46,13 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
   const cliente = clienteRaw as unknown as {
     id: string;
     nombre_visible: string;
+    activo: boolean;
     paises: { nombre: string } | { nombre: string }[] | null;
   };
+
+  // Cliente desactivado por INDUCOM: la sesión sigue siendo válida, pero no
+  // debe poder usar el portal. Se corta acá, no ocultando botones en la UI.
+  if (!cliente.activo) return { ok: false, reason: "cliente-inactivo" };
 
   const pais = Array.isArray(cliente.paises) ? cliente.paises[0]?.nombre : cliente.paises?.nombre;
 

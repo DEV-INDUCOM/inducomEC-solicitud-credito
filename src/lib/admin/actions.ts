@@ -3,15 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { routes } from "@/lib/config/site";
-import type { EstadoSolicitud, MetodoPago, OrigenPago } from "./types";
+import type { EstadoSolicitud, MetodoPago, OrigenPago, TipoCliente } from "./types";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
 const GENERIC_ERROR = "No pudimos completar la acción. Intenta de nuevo en unos minutos.";
+const DIAS_VALIDEZ_MAX = 30;
+
+function diasValidezError(dias: number): string | null {
+  if (!Number.isFinite(dias) || dias <= 0) return "Los días de validez deben ser un número mayor a 0.";
+  if (dias > DIAS_VALIDEZ_MAX) return `Los días de validez no pueden superar ${DIAS_VALIDEZ_MAX}.`;
+  return null;
+}
 
 export async function obtenerUrlDocumento(storagePath: string): Promise<{ ok: true; url: string } | { ok: false }> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.storage.from("documentos-credito").createSignedUrl(storagePath, 60 * 5);
+  // download: true agrega Content-Disposition: attachment a la URL firmada,
+  // así el navegador siempre descarga el archivo en vez de mostrarlo inline
+  // (antes abría el PDF/imagen en la pestaña nueva en lugar de bajarlo).
+  const { data, error } = await supabase.storage
+    .from("documentos-credito")
+    .createSignedUrl(storagePath, 60 * 5, { download: true });
   if (error || !data) return { ok: false };
   return { ok: true, url: data.signedUrl };
 }
@@ -82,7 +94,9 @@ export async function generarCodigo(
   clienteId: string,
   diasValidez: number
 ): Promise<GenerarCodigoResult | { ok: false; message: string }> {
-  if (!clienteId) return { ok: false, message: "Selecciona una empresa." };
+  if (!clienteId) return { ok: false, message: "Selecciona un cliente." };
+  const diasError = diasValidezError(diasValidez);
+  if (diasError) return { ok: false, message: diasError };
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -96,5 +110,59 @@ export async function generarCodigo(
     ok: true,
     codigo: (data as { codigo_generado: string }).codigo_generado,
     fechaVencimiento: (data as { fecha_vencimiento: string }).fecha_vencimiento,
+  };
+}
+
+export interface CrearClienteManualInput {
+  tipoCliente: TipoCliente;
+  paisId: number;
+  nombreVisible: string;
+  email: string;
+  identificacion: string;
+  nombres?: string;
+  apellidos?: string;
+  representanteLegal?: string;
+  diasValidez: number;
+}
+
+export async function crearClienteManual(
+  input: CrearClienteManualInput
+): Promise<GenerarCodigoResult | { ok: false; message: string }> {
+  if (!input.nombreVisible.trim() || !input.email.trim() || !input.identificacion.trim() || !input.paisId) {
+    return { ok: false, message: "Completa los datos obligatorios del cliente." };
+  }
+  if (input.tipoCliente === "natural" && (!input.nombres?.trim() || !input.apellidos?.trim())) {
+    return { ok: false, message: "Ingresa nombres y apellidos." };
+  }
+  if (input.tipoCliente === "juridica" && !input.representanteLegal?.trim()) {
+    return { ok: false, message: "Ingresa el representante legal." };
+  }
+  const diasError = diasValidezError(input.diasValidez);
+  if (diasError) return { ok: false, message: diasError };
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .rpc("crear_cliente_manual", {
+      p_tipo_cliente: input.tipoCliente,
+      p_pais_id: input.paisId,
+      p_nombre_visible: input.nombreVisible,
+      p_email: input.email,
+      p_identificacion: input.identificacion,
+      p_nombres: input.nombres ?? null,
+      p_apellidos: input.apellidos ?? null,
+      p_representante_legal: input.representanteLegal ?? null,
+      p_dias_validez: input.diasValidez,
+    })
+    .single();
+
+  if (error || !data) return { ok: false, message: GENERIC_ERROR };
+
+  revalidatePath(routes.adminCodigos);
+  revalidatePath(routes.adminEmpresas);
+  revalidatePath(routes.adminResumen);
+  return {
+    ok: true,
+    codigo: (data as { resultado_codigo: string }).resultado_codigo,
+    fechaVencimiento: (data as { resultado_fecha_vencimiento: string }).resultado_fecha_vencimiento,
   };
 }

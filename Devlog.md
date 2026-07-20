@@ -471,7 +471,14 @@ separados), `StatCard`.
 
   - Se corre este codigo sql para limpiar toda la data de prueba ingresada en la base de datos con el fin de empezar de cero con un proceso mas completo y avanzar mas alla del MVP y acercarse mas a la version para produccion.
 
-## Resumen 
+## Resumen (estado al 2026-07-16, ANTES del refactor a `clientes` — ver más abajo)
+
+> ⚠️ **Desactualizado.** Estas tablas describían el modelo cuando `empresas` era
+> el hub central. Esa migración se reemplazó por completo — ver "Modelo
+> `clientes`" más abajo — y las tablas actuales (correctas, post-refactor)
+> están al final de esta sesión, bajo "Resumen final". Se deja esta versión
+> vieja tal cual, sin editarla, como registro histórico de por qué se decidió
+> el refactor.
 
 **Functions and policies que actualmente estan funcionando y se usan**
 
@@ -507,4 +514,269 @@ activo pero **sin ninguna policy pública de lectura ni de INSERT** (las de INSE
 
 **Flujo de la creacion de codigo 
 https://claude.ai/code/artifact/12ca1cff-ed57-4f6b-bdd6-47431a47e857?via=auto_preview 
+
+
+### Scripts de limpieza total (`supabase/scripts/`)
+
+Antes del refactor de esquema se necesitaba una base limpia de cero, no solo sin
+data demo sino sin absolutamente nada (para poder ejecutar migraciones
+estructurales sin arrastrar filas viejas):
+
+- **`borrar-todo-menos-paises.sql`**: vacía `empresas`, `perfiles`,
+  `codigos_invitacion`, `solicitudes_credito`, `documentos_credito`, `pagos`,
+  `incentivos_empresa` y `auth.users`. Conserva `paises` (catálogo fijo,
+  necesario para que el formulario siga funcionando). 3 partes: PARTE 1 solo
+  cuenta filas por tabla (revisar antes de borrar), PARTE 2 borra en
+  transacción y en orden de foreign keys (hijos antes que padres), PARTE 3
+  verifica que todo quedó en 0 salvo `paises`.
+- **`vaciar-bucket-documentos-credito.mjs`**: Supabase bloquea el `DELETE`
+  directo sobre `storage.objects` con un trigger (`storage.protect_delete`),
+  para no dejar archivos huérfanos en el disco real — hay que usar la Storage
+  API. Este script (`node supabase/scripts/vaciar-bucket-documentos-credito.mjs`)
+  lista el bucket en dos niveles (una carpeta por `solicitud_id`, archivos
+  adentro) y los borra por lotes de hasta 1000.
+
+---
+
+## Modelo `clientes`: reemplaza a `empresas` como tabla central
+
+**Problema que motivó el cambio:** hasta este punto, una persona natural que
+llenaba el formulario de crédito terminaba con una fila en `empresas` usando
+su propio nombre como "nombre de la empresa" (`aprobar_solicitud_credito`
+caía a `nombre_solicitante` cuando no había `nombre_empresa`). Funcionaba,
+pero mezclaba personas y empresas reales en la misma tabla, y tras aprobar
+una solicitud se perdía el dato de si el cliente era natural o jurídico (no
+había ninguna columna que lo guardara).
+
+**`supabase/migrations/20260716000000_modelo_clientes.sql`** introduce
+`clientes` como hub común, con `personas_naturales` y `empresas` como
+subtipos:
+
+```
+clientes (id, tipo_cliente, pais_id, nombre_visible, email, identificacion)
+    ├── personas_naturales (cliente_id PK/FK)
+    └── empresas (cliente_id PK/FK)
+```
+
+- `nombre_visible`/`email`/`identificacion` viven en `clientes` porque el
+  formulario recoge los mismos campos para ambos tipos — no hay razón para
+  duplicarlos en los subtipos.
+- Los subtipos nacieron **deliberadamente mínimos** (solo el FK) en un primer
+  borrador, y luego se les agregó lo que sí distingue a cada tipo — ver la
+  sección de nombres/apellidos más abajo, que fue lo que permitió llenarlos
+  con datos reales en vez de vacíos.
+- Se migran a `cliente_id` (en vez de `empresa_id`): `perfiles`, `pagos`,
+  `codigos_invitacion`, `solicitudes_credito`.
+- `incentivos_empresa` → `incentivos_cliente`; vista `saldo_por_empresa` →
+  `saldo_por_cliente`.
+- Las 3 funciones que dependían de `empresa_id` se reescriben:
+  `consumir_codigo_invitacion` (insert a `perfiles` con `cliente_id`),
+  `generar_codigo_invitacion` (cambia el `returns table`, requiere `drop`
+  antes de recrear), `aprobar_solicitud_credito` (crea la fila en `clientes`
+  y, según `tipoCliente`, en `personas_naturales` o `empresas`).
+- **Guard de seguridad**: la migración es estructural — al inicio hace un
+  `raise exception` si detecta filas en cualquier tabla de datos, obligando a
+  correr `borrar-todo-menos-paises.sql` antes. Sin esto se podía perder data
+  real en silencio.
+- Se decidió **no editar las migraciones viejas** (`20260709000000`,
+  `20260710010000`) para no reescribir historial ya aplicado — esta es una
+  migración nueva hacia adelante, como corresponde al modelo de migraciones
+  de Supabase.
+
+**Frontend actualizado en el mismo cambio** (verificado con `tsc --noEmit` y
+`next build`, ambos sin errores): `src/lib/portal/types.ts` (`PortalEmpresa`
+→ `PortalCliente`, `empresaId` → `clienteId`), `queries.ts` (lee
+`clientes.nombre_visible` directo, sin join a subtipos; `saldo_por_cliente`;
+`incentivos_cliente`), `layout.tsx`/`PortalShell`/`PortalTopbar`
+(`empresaNombre` → `clienteNombre`), `dashboard/page.tsx`, `paypal/page.tsx`,
+`CompanySummary.tsx`. Se ajustaron 3 textos de UI que decían "tu empresa" a
+"tu cuenta", porque ya no aplica solo a empresas.
+
+### Nombres y apellidos separados (no un solo "nombre completo")
+
+Al diseñar `personas_naturales` surgió la duda de si guardar `nombres`/
+`apellidos` por separado (mejor práctica) o un solo campo. El formulario
+público (v2, activo) solo tenía **un input** — "Nombre del solicitante",
+placeholder "Nombres y apellidos" — así que partir ese string a posteriori
+para llenar dos columnas habría significado *adivinar* dónde cortar un
+nombre compuesto (ej. "Juan Carlos Pérez López"), con alto riesgo de error.
+
+Se optó por resolverlo en la raíz: **separar el campo en el formulario
+público**, no solo en la base de datos.
+
+- `Step2Datos.tsx`: el input único se partió en dos — "Nombres del
+  solicitante" y "Apellidos del solicitante".
+- `types.ts` (`DatosStep2`), `validation.ts` (`validateStep2`),
+  `CreditRequestForm2.tsx`: `nombreSolicitante` → `nombres` + `apellidos` en
+  todo el flujo del wizard.
+- `route.ts`: el cliente ya **no manda** un nombre concatenado — manda
+  `nombres`/`apellidos` sueltos. El servidor arma
+  `` `${nombres} ${apellidos}`.trim() `` él mismo para la columna
+  `solicitudes_credito.nombre_solicitante` y para el correo de notificación:
+  es la única fuente de verdad, así no puede llegar un nombre completo que no
+  coincida con los campos reales que sí llegaron.
+- `personas_naturales` terminó con columnas reales `nombres text not null,
+  apellidos text not null`, pobladas por `aprobar_solicitud_credito` leyendo
+  `datos_adicionales ->> 'nombres'` / `->> 'apellidos'` (el jsonb ya guarda
+  el objeto completo que mandó el cliente). Si faltaran, la función corta con
+  `raise exception 'solicitud_sin_nombres_apellidos'` en vez de guardar datos
+  inventados.
+- De paso se le agregó a `empresas` la columna `representante_legal text not
+  null` (faltaba en el primer borrador): quien llena el form como jurídica
+  ES el representante legal, y con nombres/apellidos ya separados ese dato
+  llega limpio. No se agregó `ruc` en `empresas` porque ya vive en
+  `clientes.identificacion` — duplicarlo hubiera sido redundante.
+
+## Resumen final (post-refactor, vigente)
+
+**Tablas de negocio:** `paises`, `clientes` (hub), `personas_naturales` y
+`empresas` (subtipos 1:1 con `clientes`), `perfiles`, `codigos_invitacion`,
+`solicitudes_credito`, `documentos_credito`, `pagos`, `incentivos_cliente`.
+Vista: `saldo_por_cliente`.
+
+| Función | Para qué sirve | Quién la ejecuta |
+|---|---|---|
+| `consumir_codigo_invitacion(text)` | Consume el código al registrarse | `authenticated` — `RegisterForm` desde el navegador |
+| `aprobar_solicitud_credito(uuid, int)` | Aprueba una solicitud: crea/vincula cliente (natural o jurídica) y genera su código | `service_role` en este punto (cambia a `authenticated` con el panel admin — ver Sesión 2026-07-17) |
+| `generar_codigo_invitacion(uuid, int)` | Genera el código `IND-EC-...` | llamada internamente por `aprobar_solicitud_credito` |
+| `set_updated_at()` | Trigger que mantiene `updated_at` al día | automático |
+| `rls_auto_enable` | Event trigger: activa RLS en tablas nuevas | automático |
+
+| Policy | Tabla | Qué permite |
+|---|---|---|
+| `usuarios ven su propio cliente` | `clientes` | cada quien ve solo su fila |
+| `usuarios ven su propia persona natural` / `...su propia empresa` | `personas_naturales` / `empresas` | mismo aislamiento por `cliente_id` |
+| `usuarios ven los pagos de su cliente` | `pagos` | aislado por `cliente_id` |
+| `usuarios ven el incentivo de su cliente` | `incentivos_cliente` | aislado por `cliente_id` |
+
+`solicitudes_credito`, `documentos_credito` y `codigos_invitacion` siguen sin
+ninguna policy pública de lectura ni de INSERT — solo `service_role` (desde
+`route.ts`) puede tocarlas.
+
+---
+
+## Sesión — 2026-07-17
+
+**Tema principal: panel administrativo completo** — hasta ahora, aprobar una
+solicitud o generar un código de invitación se hacía a mano en el SQL Editor
+de Supabase con `service_role`, sin ningún login de por medio y sin registro
+de qué empleado hizo qué. Esta sesión construye un panel propio en
+`/admin/*`, con su propio login, y mueve la autorización de esas operaciones
+a nivel de base de datos (RLS + funciones), no solo de pantalla.
+
+### `supabase/migrations/20260716010000_personal_interno.sql`
+
+- Tabla **`personal_interno`**: identidad individual 1:1 con `auth.users`
+  (`id uuid references auth.users(id)`, `nombre`, `rol` fijo a `'admin'` por
+  ahora, `activo boolean`). Alta es manual (crear el usuario en Supabase Auth
+  + un `insert` a esta tabla) — no hay self-service, para no poder escalar
+  privilegios de admin desde el navegador.
+- Policy `"personal ve su propio registro"`: cada quien ve solo su fila.
+- Función helper **`es_personal_interno_activo()`** (`security definer`,
+  `stable`): responde si el usuario autenticado actual es personal interno
+  con `activo = true`. La usan como guard todas las funciones/policies
+  admin de aquí en adelante.
+- Columnas de auditoría nuevas: `codigos_invitacion.generado_por` y
+  `solicitudes_credito.aprobado_por`, ambas `references personal_interno(id)`
+  — para que quede registro de qué empleado generó cada código y aprobó cada
+  solicitud (antes, con `service_role`, no había forma de saberlo).
+- **`generar_codigo_invitacion`** y **`aprobar_solicitud_credito`** se
+  reescriben: pierden el `grant` a `service_role` y pasan a `authenticated`,
+  con `if not public.es_personal_interno_activo() then raise exception
+  'no_autorizado'` al inicio. Ya no basta con tener la llave maestra — hay
+  que estar logueado como personal interno activo.
+
+### `supabase/migrations/20260717000000_panel_admin.sql`
+
+- **Policies "personal interno ve todo"**, agregadas sin tocar las policies
+  existentes de "cada cliente ve lo suyo" (conviven en la misma tabla): sobre
+  `personal_interno`, `clientes`, `personas_naturales`, `empresas`,
+  `perfiles`, `pagos`, `codigos_invitacion`, `solicitudes_credito`,
+  `documentos_credito`, `incentivos_cliente`. Todas con el mismo patrón:
+  `using (public.es_personal_interno_activo())`.
+- `incentivos_cliente` gana policies de INSERT/UPDATE para personal interno
+  (asignar/actualizar un incentivo no tiene invariantes complejas, se
+  resuelve con RLS directo, sin RPC dedicado).
+- **Policy de Storage**: `"personal interno lee documentos de credito"` — sin
+  esto, `createSignedUrl()` desde el panel (que usa la sesión del admin, no
+  `service_role`) no puede leer los objetos del bucket privado aunque la fila
+  de `documentos_credito` sí sea visible por RLS. Ver el bug de esta sesión
+  más abajo.
+- Vista **`admin_resumen_clientes`** (`security_invoker = true`): evita N+1
+  queries en la pantalla de Empresas — trae usuarios, total pagado y último
+  pago por cliente en una sola consulta.
+- `pagos` gana columnas **`metodo_pago`** (transferencia/tarjeta/efectivo/
+  cheque/ventanilla/otro) y **`registrado_por`** (qué admin cargó el pago) +
+  policy de INSERT para personal interno.
+- Tabla nueva **`historial_solicitud`**: registra cada cambio de estado de
+  una solicitud (`estado_anterior`, `estado_nuevo`, `nota`, `actor_id`). Sin
+  policy de INSERT — la única vía de escritura es la función de abajo, para
+  que cada fila del historial quede atada a un cambio real y auditado.
+- Función **`actualizar_estado_solicitud(solicitud_id, nuevo_estado, nota)`**:
+  cambia el estado de una solicitud y deja rastro en `historial_solicitud`. Si
+  el nuevo estado es `'aprobado'`, delega en `aprobar_solicitud_credito`
+  (crea/vincula cliente + genera código) en vez de duplicar esa lógica.
+  También requiere `es_personal_interno_activo()`.
+
+### Frontend del panel (`src/app/(admin)/`, `src/components/admin/`)
+
+- **Rutas** (`src/lib/config/site.ts`): `/admin/login`, `/admin` (Resumen),
+  `/admin/solicitudes` (+ detalle `[id]`), `/admin/empresas` (+ detalle
+  `[id]`), `/admin/pagos`, `/admin/codigos`, `/admin/perfil`.
+- **Protección de rutas** en `proxy.ts` (middleware): cualquier `/admin/*`
+  que no sea `/admin/login` exige sesión **y** una fila en `personal_interno`
+  con `activo = true` — si falta cualquiera de las dos, redirige a
+  `/admin/login`. Es el mismo patrón que ya protegía `/portal/*`, con su
+  propio matcher (`/admin/:path*`).
+- **`AdminGroupLayout`** (`(admin)/layout.tsx`): defensa en profundidad —
+  vuelve a resolver el contexto aunque el middleware ya haya filtrado, para
+  poder mostrar un estado propio (sesión sin cuenta de personal interno,
+  error) en vez de un error crudo.
+- **`src/lib/admin/actions.ts`** (server actions):
+  - `obtenerUrlDocumento(storagePath)`: genera una signed URL de 5 minutos
+    para un adjunto del bucket privado.
+  - `actualizarEstadoSolicitud(id, nuevoEstado, nota)`: llama al RPC del
+    mismo nombre; revalida el detalle, el listado y el resumen.
+  - `registrarPago(input)`: inserta en `pagos` con `origen: "manual"` y el
+    `id` del admin logueado en `registrado_por`; revalida pagos, resumen y
+    empresas.
+  - `generarCodigo(clienteId, diasValidez)`: llama a
+    `generar_codigo_invitacion` vía RPC.
+- **Componentes** (`components/admin/`): `ClientesTable`, `CodigosTable`,
+  `PagosTable`, `EstadoSolicitudBadge`, `EstadoSolicitudForm`,
+  `GenerarCodigoModal`, `Pagination`, `DocumentoDownloadButton` (botón que
+  llama a `obtenerUrlDocumento` y abre la signed URL en una pestaña nueva).
+- **`docs/flujo-solicitud-credito.md`**: documento nuevo con el flujo
+  completo público → aprobación → registro, para referencia del equipo.
+
+### Cambio menor de paso: `folio` → `numeroSolicitud`
+
+En el mismo commit se renombró la variable/campo de respuesta de
+`route.ts` (y su consumo en `CreditRequestForm2.tsx`/`SuccessScreen.tsx`) de
+`folio` a `numeroSolicitud` — mismo valor (`SOL-XXXXXXXX`), solo cambia el
+nombre. No afecta ninguna lógica.
+
+### 🐛 Bug diagnosticado: el botón de descargar documento no abre nada
+
+**Síntoma reportado:** "no se me está guardando en el bucket". Se verificó
+con capturas del Storage Explorer que **los archivos sí se suben
+correctamente** — cada `solicitud_id` tiene su carpeta con los adjuntos
+reales, con su tamaño y fecha. El bug no está en la subida (`route.ts`, sin
+tocar desde la refactorización de nombres/apellidos).
+
+**Causa real:** `obtenerUrlDocumento()` usa `createSupabaseServerClient()`
+(la sesión del admin logueado, respeta RLS) para llamar
+`.storage.from("documentos-credito").createSignedUrl(...)`. Generar una
+signed URL de un bucket privado exige que el llamante tenga permiso de
+`SELECT` sobre `storage.objects` vía RLS. Esa policy
+(`"personal interno lee documentos de credito"`) **sí existe en el
+repo** — está en `20260717000000_panel_admin.sql` — pero si esa migración
+todavía no se corrió contra el Supabase real, la policy no existe ahí, y
+`createSignedUrl` falla en silencio (el botón no abre nada, sin error
+visible).
+
+**Pendiente de confirmar:** correr `20260716010000_personal_interno.sql` y
+`20260717000000_panel_admin.sql` (completos, en ese orden, cada uno de una
+sola vez) contra el Supabase real, y volver a probar el botón de descarga
+desde el panel.
 

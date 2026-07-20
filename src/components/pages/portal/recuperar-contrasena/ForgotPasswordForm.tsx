@@ -9,10 +9,15 @@ import { forgotPasswordSchema } from "@/lib/validations/auth";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/config/site";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ origen }: { origen?: string }) {
   const [email, setEmail] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<{ tone: FormStatusTone; message: string } | null>(null);
+
+  // Si el reset viene del admin, todo el flujo regresa al login del admin
+  const isAdmin = origen === "admin";
+  const loginHref = isAdmin ? routes.adminLogin : routes.login;
+  const updatePath = isAdmin ? `${routes.updatePassword}?origen=admin` : routes.updatePassword;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,7 +32,7 @@ export function ForgotPasswordForm() {
 
     setStatus({ tone: "loading", message: "Enviando…" });
     const { error } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(result.data.email, {
-      redirectTo: `${window.location.origin}${routes.updatePassword}`,
+      redirectTo: `${window.location.origin}${updatePath}`,
     });
 
     if (error) {
@@ -69,7 +74,7 @@ export function ForgotPasswordForm() {
 
       <hr className="my-6 border-t border-[color:var(--border)]" />
       <p className="text-center text-sm text-[var(--text-secondary)] leading-normal">
-        <Link href={routes.login} className="font-medium text-brand-navy-600">
+        <Link href={loginHref} className="font-medium text-brand-navy-600">
           ← Volver a iniciar sesión
         </Link>
       </p>

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
@@ -85,6 +86,15 @@ export function AdminLoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={fieldErrors.password}
+          // Reutiliza el flujo de recuperación del portal; ?origen=admin hace que el flujo regrese al login del admin
+          labelAction={
+            <Link
+              href={`${routes.forgotPassword}?origen=admin`}
+              className="text-sm font-medium text-[var(--accent)]"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          }
         />
 
         {status && <FormStatus tone={status.tone}>{status.message}</FormStatus>}

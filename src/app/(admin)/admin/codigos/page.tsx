@@ -7,7 +7,7 @@ import { Pagination } from "@/components/admin/Pagination";
 import { CodigosTable } from "@/components/admin/CodigosTable";
 import { GenerarCodigoModal } from "@/components/admin/GenerarCodigoModal";
 import { estadoCodigoLabel } from "@/lib/admin/labels";
-import { getClientesOptions, getCodigos, getCodigosStats, PAGE_SIZE, type CodigosFiltros } from "@/lib/admin/queries";
+import { getClientesOptions, getCodigos, getCodigosStats, getPaises, PAGE_SIZE, type CodigosFiltros } from "@/lib/admin/queries";
 import { routes } from "@/lib/config/site";
 
 export const metadata: Metadata = { title: "Códigos de invitación" };
@@ -26,17 +26,18 @@ export default async function AdminCodigosPage({
     vence: sp.vence ? new Date(`${sp.vence}T23:59:59`).toISOString() : undefined,
   };
 
-  const [clientes, resultado, stats] = await Promise.all([
+  const [clientes, resultado, stats, paises] = await Promise.all([
     getClientesOptions(),
     getCodigos(filtros, page, PAGE_SIZE),
     getCodigosStats(),
+    getPaises(),
   ]);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <h1 className="text-3xl">Códigos de invitación</h1>
-        <GenerarCodigoModal clientes={clientes} />
+        <GenerarCodigoModal clientes={clientes} paises={paises} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

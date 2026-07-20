@@ -8,10 +8,13 @@ import { FormStatus, type FormStatusTone } from "@/components/ui/FormStatus";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { routes } from "@/lib/config/site";
 
-export function UpdatePasswordForm() {
+export function UpdatePasswordForm({ origen }: { origen?: string }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<{ tone: FormStatusTone; message: string } | null>(null);
+
+  // Regresa al login del admin si el reset se inició desde ahí
+  const loginHref = origen === "admin" ? routes.adminLogin : routes.login;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,7 +61,7 @@ export function UpdatePasswordForm() {
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
-        <Link href={routes.login} className="font-medium text-[var(--accent)]">Volver a iniciar sesión</Link>
+        <Link href={loginHref} className="font-medium text-[var(--accent)]">Volver a iniciar sesión</Link>
       </p>
     </>
   );
