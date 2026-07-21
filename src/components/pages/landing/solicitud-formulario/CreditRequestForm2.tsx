@@ -122,6 +122,8 @@ export function CreditRequestForm2() {
       if (file instanceof File) body.set(key, file); //es el que guarda el archivo bajo esa llave
     }
 
+
+   //TODO SE ACTIVA FLUJO DE N8N 
     try {
       const res = await fetch("/api/solicitud-credito", { method: "POST", body });
       const result = (await res.json()) as { ok: boolean; numeroSolicitud?: string; message?: string };

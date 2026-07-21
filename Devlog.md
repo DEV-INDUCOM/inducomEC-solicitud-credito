@@ -780,3 +780,93 @@ visible).
 sola vez) contra el Supabase real, y volver a probar el botón de descarga
 desde el panel.
 
+---
+
+## Sesión — 2026-07-21
+
+**Tema principal: correo de notificación con adjuntos reales vía n8n, y se
+descubrió que el backend de ese flujo ya estaba escrito en el working tree
+(sin commitear) antes de empezar esta sesión.**
+
+### Contexto encontrado al iniciar
+
+`route.ts` y `env.server.ts` ya tenían, sin commitear, un bloque que dispara
+un `fetch` (sin `await`, fire-and-forget) a `serverEnv.n8nWebhookUrl` justo
+después de guardar la solicitud en Supabase — con `solicitud_id` y los datos
+del solicitante en el body. Es decir: el lado de Next.js de esta integración
+ya estaba resuelto de una sesión anterior; lo que faltaba era (a) la variable
+de entorno con la URL real y (b) el workflow del lado de n8n que reciba ese
+POST y realmente arme/mande el correo con los adjuntos.
+
+### Variable de entorno `N8N_WEBHOOK_URL`
+
+- Agregada en `.env` (valor real: `https://inducom.app.n8n.cloud/webhook/envio-correo`)
+  y en `.env.example` (vacía, como plantilla).
+- Falta agregarla también en Vercel (Settings → Environment Variables) +
+  redeploy para que tome efecto en producción — **pendiente, no hecho en esta
+  sesión**.
+
+### Workflow de n8n diseñado (fuera del repo)
+
+Se diseñó el flujo completo para el webhook `envio-correo`: **Webhook (POST)
+→ query Postgres a `documentos_credito` por `solicitud_id` → HTTP Request que
+descarga cada adjunto del bucket privado de Supabase Storage → Code que junta
+los adjuntos en base64 → Code que arma el HTML del correo (mismo diseño de
+marca que la plantilla original, portado a JS) → HTTP Request que envía por
+la API de Resend con los adjuntos reales.**
+
+El JSON exportable del workflow quedó guardado en la carpeta scratchpad de la
+sesión (fuera del repo, no versionado): el usuario lo importa manualmente en
+su instancia de n8n. Pendiente de que el usuario lo importe, complete las
+credenciales (Postgres, Supabase `service_role`, Resend API key) y active el
+workflow.
+
+### Se corrigió: se mandaban DOS correos por cada solicitud, ahora uno solo
+
+Antes de esta sesión, `route.ts` mandaba un correo inmediato por Resend
+**sin adjuntos** (solo listaba nombres de archivo) y, además, el fetch a n8n
+disparaba un **segundo** correo con los adjuntos reales. A pedido del
+usuario, se dejó un solo correo:
+
+- Se quitó de `route.ts` el bloque que enviaba directo por `resend.emails.send(...)`.
+- Se limpiaron los imports que quedaron sin uso: `Resend` (de `"resend"`) y
+  `renderNuevaSolicitudEmail` (de `@/lib/email/nueva-solicitud`), y la
+  constante `NOTIFICATION_FROM`.
+- Único correo restante: el que arma y manda el workflow de n8n (con
+  adjuntos reales), disparado por el `fetch` fire-and-forget que ya existía.
+- **Pendiente sin resolver:** `src/lib/email/nueva-solicitud.ts` quedó sin
+  ningún import — es código muerto. Se intentó borrar con `rm` pero el modo
+  automático bloqueó la acción (operación destructiva). Falta que alguien lo
+  borre manualmente si se está de acuerdo.
+
+### Columna nueva `documentos_credito.tipo_documento`
+
+El usuario pidió poder saber a qué requisito corresponde cada documento
+(cédula, RUC, certificado bancario, etc.) — antes esa clave solo vivía
+escondida como substring dentro de `storage_path`, no como columna
+consultable.
+
+- **Migración nueva:** `supabase/migrations/20260721000000_documentos_credito_tipo.sql`
+  — `alter table documentos_credito add column tipo_documento text;`
+  (nullable, sin backfill de filas viejas — el usuario confirmó que los datos
+  existentes son descartables). **Todavía no se corrió contra el Supabase
+  real.**
+- `route.ts`: nuevo diccionario `REQUISITO_LABEL` (clave interna → etiqueta
+  en español ya traducida: "Cédula", "RUC", "Certificado bancario", etc.,
+  decisión explícita del usuario de guardar la etiqueta ya traducida y no la
+  clave cruda) y se agregó `tipo_documento: REQUISITO_LABEL[key] ?? key` al
+  `insert` de `documentos`.
+- A pedido explícito del usuario, **no se tocó** `admin/queries.ts` ni la UI
+  del panel — sigue mostrando `nombre_archivo` como antes. Alcance
+  intencionalmente mínimo.
+- Se verificó que ninguna policy/función RLS enumera columnas de
+  `documentos_credito` (la única policy sobre esa tabla es un `select` sin
+  lista de columnas), así que el `alter table` no rompe nada existente.
+
+### Documentación
+
+- Se agrega esta entrada al Devlog.
+- Se crea `flujo.md` (raíz del proyecto): explicación del flujo completo del
+  formulario de solicitud de crédito, para alguien sin contexto previo del
+  proyecto — qué archivos intervienen, cuándo se activa cada paso, y qué
+  significa en términos simples el `fetch` hacia `/api/solicitud-credito`. 

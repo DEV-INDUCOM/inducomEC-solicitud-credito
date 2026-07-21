@@ -10,6 +10,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { ToggleChip } from "@/components/ui/ToggleChip";
 import { FormStatus, type FormStatusTone } from "@/components/ui/FormStatus";
 import { generarCodigo, crearClienteManual } from "@/lib/admin/actions";
+import { EnviarCodigoButton } from "@/components/admin/EnviarCodigoButton";
 import { formatFecha } from "@/lib/admin/format";
 import { tipoClienteLabel } from "@/lib/admin/labels";
 import type { TipoCliente } from "@/lib/admin/types";
@@ -114,7 +115,8 @@ export function GenerarCodigoModal({
                   </button>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">Vence el {formatFecha(generado.vence)}.</p>
-                <Button onClick={handleClose} block>
+                <EnviarCodigoButton codigo={generado.codigo} />
+                <Button variant="outline" onClick={handleClose} block>
                   Cerrar
                 </Button>
               </div>

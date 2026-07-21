@@ -1,17 +1,16 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { serverEnv } from "@/lib/config/env.server";
 import { publicEnv } from "@/lib/config/env";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rate-limit";
-import { renderNuevaSolicitudEmail } from "@/lib/email/nueva-solicitud";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Recibe la solicitud de crédito pública, la revalida en servidor (nunca
  * confiar solo en la validación del navegador) y la guarda directo en
  * Supabase: adjuntos a un bucket privado de Storage, metadata en
- * `documentos_credito`, datos en `solicitudes_credito`, y notificación por Resend.
+ * `documentos_credito`, datos en `solicitudes_credito`, y dispara el webhook
+ * de n8n que arma y envía el correo de notificación (con los adjuntos reales).
  *
  * Medidas de seguridad de este endpoint:
  * - Usa `service_role` (createSupabaseAdminClient) solo aquí, en servidor:
@@ -43,10 +42,16 @@ const REQUISITO_KEYS = [
 ];
 const ADJUNTOS_BUCKET = "documentos-credito";
 const MAX_DATA_LENGTH = 250_000;
-// El dominio dado de alta en Resend es grupo-inducom.com (OJO: no es inducom-ec.com,
-// que es el del SMTP de Zoho de Supabase Auth — son dos cosas distintas).
-// Resend rechaza el envío si el `from` es de un dominio que no está verificado ahí.
-const NOTIFICATION_FROM = "Portal INDUCOM <notificaciones@grupo-inducom.com>";
+// Etiqueta en español de cada requisito, para guardar en documentos_credito.tipo_documento.
+const REQUISITO_LABEL: Record<string, string> = {
+  solicitudFirmada: "Solicitud firmada",
+  cedula: "Cédula",
+  ruc: "RUC",
+  certBancario: "Certificado bancario",
+  refsComerciales: "Referencias comerciales",
+  nombramiento: "Nombramiento",
+  ordenCompra: "Orden de compra",
+};
 
 const emailOk = (v: unknown) => typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const idOk = (v: unknown) => typeof v === "string" && /^\d{10}$|^\d{13}$/.test(v.trim());
@@ -257,6 +262,7 @@ export async function POST(request: Request) {
     solicitud_id: solicitud.id,
     storage_path: adjuntos[key],
     nombre_archivo: safeFileName(file.name),
+    tipo_documento: REQUISITO_LABEL[key] ?? key,
     tipo_mime: file.type,
     tamano_bytes: file.size,
   }));
@@ -271,13 +277,16 @@ export async function POST(request: Request) {
     return genericError(502, "No pudimos procesar tu solicitud. Intenta de nuevo en unos minutos.");
   }
 
-  // La notificación es informativa: si falla, la solicitud ya quedó
-  // guardada, así que no se le muestra un error al cliente por esto.
-  if (serverEnv.resendApiKey && serverEnv.internalNotificationEmail) {
-    try {
-      // Mismo diseño que la plantilla de Supabase Auth. Se le pasan las claves de
-      // los adjuntos que sí llegaron, no las 7 posibles.
-      const { html, text } = renderNuevaSolicitudEmail({
+  // Único correo de notificación: lo arma y envía n8n (con los adjuntos
+  // reales descargados del bucket). Informativo: si falla, la solicitud ya
+  // quedó guardada, así que no se le muestra error al cliente por esto.
+  if (serverEnv.n8nWebhookUrl) {
+    fetch(serverEnv.n8nWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tipo: "solicitud_credito",
+        solicitud_id: solicitud.id,
         numeroSolicitud,
         tipoSolicitud: String(data.tipoSolicitud),
         tipoCliente: String(data.tipoCliente),
@@ -287,23 +296,10 @@ export async function POST(request: Request) {
         rucSolicitante: String(data.rucSolicitante).trim(),
         numeroCotizacion: nonEmpty(data.numeroCotizacion) ? String(data.numeroCotizacion).trim() : undefined,
         adjuntos: files.map(({ key }) => key),
-      });
-
-      const resend = new Resend(serverEnv.resendApiKey);
-      await resend.emails.send({
-        // El dominio verificado en Resend es inducom-ec.com (el mismo del SMTP de
-        // Zoho). Resend rechaza cualquier `from` de un dominio que no controlemos.
-        from: NOTIFICATION_FROM,
-        to: serverEnv.internalNotificationEmail,
-        // Responder al correo cae directo en el buzón del cliente, no en el vacío.
-        replyTo: String(data.emailSolicitante).trim().toLowerCase(),
-        subject: `Nueva solicitud de crédito — ${numeroSolicitud}`,
-        html,
-        text,
-      });
-    } catch (error) {
-      console.error(`Fallo al enviar notificación de la solicitud ${numeroSolicitud}:`, error);
-    }
+      }),
+    }).catch((error) => {
+      console.error(`Fallo al notificar a n8n de la solicitud ${numeroSolicitud}:`, error);
+    });
   }
 
   return NextResponse.json({ ok: true, numeroSolicitud });
