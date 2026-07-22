@@ -48,7 +48,7 @@ export default async function AdminSolicitudDetallePage({ params }: { params: Pr
             </IconTile>
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl">{solicitud.nombreSolicitante}</h1>
+                <h1 className="text-2xl text-[var(--text-on-dark)] capitalize">{solicitud.nombreSolicitante}</h1>
                 <EstadoSolicitudBadge estado={solicitud.estado} />
               </div>
               <p className="mt-2 text-sm text-slate-300">
