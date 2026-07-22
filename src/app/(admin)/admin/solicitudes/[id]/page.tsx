@@ -114,20 +114,24 @@ export default async function AdminSolicitudDetallePage({ params }: { params: Pr
             {solicitud.documentos.length === 0 ? (
               <p className="text-sm text-[var(--text-secondary)]">Esta solicitud no tiene documentos adjuntos.</p>
             ) : (
+
               <ul className="flex flex-col divide-y divide-[color:var(--border)]">
                 {solicitud.documentos.map((doc) => (
+
                   <li key={doc.id} className="flex items-center justify-between gap-3 py-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <IconTile variant="accent">
                         <IconFileText size={18} stroke={1.75} />
                       </IconTile>
-                      <div className="min-w-0">
+                      <div className="w-[500px] min-w-0">
+                        {/* w-56 fija el ancho del bloque para que el nombre largo trunque en vez de estirar el contenedor */}
                         <p className="truncate text-sm font-medium text-[var(--text-primary)]">{doc.nombreArchivo}</p>
                         <p className="text-xs text-[var(--text-muted)]">{formatBytes(doc.tamanoBytes)}</p>
                       </div>
                     </div>
                     <DocumentoDownloadButton storagePath={doc.storagePath} />
                   </li>
+
                 ))}
               </ul>
             )}
