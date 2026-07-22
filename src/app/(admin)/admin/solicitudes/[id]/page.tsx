@@ -52,7 +52,7 @@ export default async function AdminSolicitudDetallePage({ params }: { params: Pr
                 <EstadoSolicitudBadge estado={solicitud.estado} />
               </div>
               <p className="mt-2 text-sm text-slate-300">
-                Folio: <span className="font-mono">{solicitud.folio}</span> · {formatFechaHora(solicitud.createdAt)}
+                N.º de solicitud: <span className="font-mono">{solicitud.folio}</span> · {formatFechaHora(solicitud.createdAt)}
               </p>
             </div>
           </div>
