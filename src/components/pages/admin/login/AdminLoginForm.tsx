@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { FormStatus, type FormStatusTone } from "@/components/ui/FormStatus";
 import { loginSchema } from "@/lib/validations/auth";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import { routes } from "@/lib/config/site";
 
 export function AdminLoginForm() {
@@ -34,7 +35,7 @@ export function AdminLoginForm() {
     }
 
     setStatus({ tone: "loading", message: "Verificando credenciales…" });
-    const supabase = createSupabaseBrowserClient();
+    const supabase = createSupabaseBrowserClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
     const { data, error } = await supabase.auth.signInWithPassword({
       email: result.data.email,
       password: result.data.password,

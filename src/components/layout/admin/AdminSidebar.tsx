@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IconUserCircle } from "@tabler/icons-react";
 import { LogoutButton } from "@/components/layout/portal/LogoutButton";
+import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import { routes } from "@/lib/config/site";
 import { AdminNavList } from "./AdminNavList";
 
@@ -21,7 +22,7 @@ export function AdminSidebar() {
           Perfil
         </Link>
         <div className="px-3">
-          <LogoutButton redirectTo={routes.adminLogin} />
+          <LogoutButton redirectTo={routes.adminLogin} cookieName={ADMIN_AUTH_COOKIE_NAME} />
         </div>
       </div>
     </aside>

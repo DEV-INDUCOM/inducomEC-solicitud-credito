@@ -6,6 +6,7 @@ import { IconTile } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { getAdminContext } from "@/lib/admin/queries";
+import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import { routes } from "@/lib/config/site";
 
 export default async function AdminGroupLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,7 @@ export default async function AdminGroupLayout({ children }: { children: React.R
             }
             title="Tu cuenta no tiene acceso al panel"
             description="Tu sesión es válida, pero no está asociada a una cuenta de personal interno activa."
-            action={<LogoutButton redirectTo={routes.adminLogin} />}
+            action={<LogoutButton redirectTo={routes.adminLogin} cookieName={ADMIN_AUTH_COOKIE_NAME} />}
           />
         </div>
       </div>
@@ -41,7 +42,7 @@ export default async function AdminGroupLayout({ children }: { children: React.R
     return (
       <div data-surface="portal" className="flex min-h-screen items-center justify-center bg-[var(--bg-page)] px-4">
         <div className="w-full max-w-md">
-          <ErrorState action={<LogoutButton redirectTo={routes.adminLogin} />} />
+          <ErrorState action={<LogoutButton redirectTo={routes.adminLogin} cookieName={ADMIN_AUTH_COOKIE_NAME} />} />
         </div>
       </div>
     );

@@ -9,8 +9,11 @@ import { publicEnv } from "@/lib/config/env";
  * navegador. Este es el cliente que deben usar login, registro y cualquier
  * lectura/escritura autenticada en el servidor.
  *
+ * `cookieName` (opcional): igual que en client.ts — usar
+ * ADMIN_AUTH_COOKIE_NAME (cookie-config.ts) en todo lo que sirva al panel
+ * admin, para que su sesión no comparta cookie con la del portal.
  */
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(options?: { cookieName?: string }) {
   const cookieStore = await cookies();
 
   return createServerClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
@@ -29,5 +32,6 @@ export async function createSupabaseServerClient() {
         }
       },
     },
+    ...(options?.cookieName ? { cookieOptions: { name: options.cookieName } } : {}),
   });
 }

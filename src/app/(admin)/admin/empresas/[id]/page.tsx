@@ -32,6 +32,7 @@ export default async function AdminEmpresaDetallePage({ params }: { params: Prom
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl text-[var(--text-on-dark)] capitalize">{cliente.nombre}</h1>
+              {!cliente.activo && <StatusBadge tone="neutral">Archivado</StatusBadge>}
               {cliente.incentivoActivo ? (
                 <StatusBadge tone="success">{incentivoLabel[cliente.incentivoActivo]}</StatusBadge>
               ) : (

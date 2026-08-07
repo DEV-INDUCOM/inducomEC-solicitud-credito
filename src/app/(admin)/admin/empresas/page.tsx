@@ -28,6 +28,7 @@ export default async function AdminEmpresasPage({
     paisId: sp.pais ? Number(sp.pais) : undefined,
     incentivo: (sp.incentivo as IncentivoTipo | "sin_incentivo") || undefined,
     tipoCliente: (sp.tipo as "natural" | "juridica") || undefined,
+    estado: (sp.estado as "activos" | "archivados" | "todos") || undefined,
   };
 
   const [paises, resultado, totalGlobal] = await Promise.all([
@@ -102,6 +103,19 @@ export default async function AdminEmpresasPage({
             </select>
           </label>
 
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-[var(--text-primary)]">Estado</span>
+            <select
+              name="estado"
+              defaultValue={sp.estado ?? "activos"}
+              className="h-11 rounded border border-[color:var(--border-strong)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]"
+            >
+              <option value="activos">Activos</option>
+              <option value="archivados">Archivados</option>
+              <option value="todos">Todos</option>
+            </select>
+          </label>
+
           <div className="col-span-full flex justify-end gap-3">
             <a href={routes.adminEmpresas}>
               <Button type="button" variant="outline" size="sm">
@@ -117,7 +131,7 @@ export default async function AdminEmpresasPage({
 
       {resultado.ok ? (
         <div className="flex flex-col gap-4">
-          <ClientesTable items={resultado.items} />
+          <ClientesTable items={resultado.items} paises={paises} />
           <Pagination
             basePath={routes.adminEmpresas}
             searchParams={sp}

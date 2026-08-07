@@ -67,6 +67,7 @@ export interface AdminClienteListItem {
   nombre: string;
   identificacion: string;
   tipoCliente: TipoCliente;
+  activo: boolean;
   pais: string | null;
   usuarios: number;
   incentivoActivo: IncentivoTipo | null;
@@ -80,6 +81,7 @@ export interface AdminClienteDetalle {
   nombre: string;
   identificacion: string;
   tipoCliente: TipoCliente;
+  activo: boolean;
   pais: string | null;
   email: string;
   incentivoActivo: IncentivoTipo | null;

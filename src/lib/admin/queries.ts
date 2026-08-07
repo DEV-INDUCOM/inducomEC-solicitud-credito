@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import type {
   AdminClienteDetalle,
   AdminClienteListItem,
@@ -27,7 +28,7 @@ export type AdminContextResult =
  *  middleware ya filtró sin-sesión / sin personal_interno, pero el layout
  *  del panel vuelve a resolverlo como defensa en profundidad. */
 export const getAdminContext = cache(async (): Promise<AdminContextResult> => {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -48,7 +49,7 @@ export const getAdminContext = cache(async (): Promise<AdminContextResult> => {
 });
 
 export const getPaises = cache(async () => {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { data } = await supabase.from("paises").select("id, codigo, nombre").order("nombre");
   return data ?? [];
 });
@@ -84,7 +85,7 @@ function inicioMes() {
 }
 
 export async function getResumenStats(): Promise<{ ok: true; data: ResumenStats } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   const [
     solicitudesSemana,
@@ -174,7 +175,7 @@ const ESTADOS_SOLICITUD: EstadoSolicitud[] = [
 ];
 
 export async function getSolicitudCounts(): Promise<Record<EstadoSolicitud, number>> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const counts = await Promise.all(
     ESTADOS_SOLICITUD.map((estado) =>
       supabase.from("solicitudes_credito").select("id", { count: "exact", head: true }).eq("estado", estado)
@@ -193,7 +194,7 @@ export async function getSolicitudes(
   page = 1,
   pageSize = PAGE_SIZE
 ): Promise<{ ok: true; items: AdminSolicitudListItem[]; total: number } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   let query = supabase
     .from("solicitudes_credito")
@@ -242,7 +243,7 @@ export async function getSolicitudes(
 export async function getSolicitudDetalle(
   id: string
 ): Promise<{ ok: true; data: AdminSolicitudDetalle } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   const { data: row, error } = await supabase
     .from("solicitudes_credito")
@@ -321,6 +322,9 @@ export interface ClientesFiltros {
   paisId?: number;
   incentivo?: IncentivoTipo | "sin_incentivo";
   tipoCliente?: "natural" | "juridica";
+  /** Sin especificar = solo activos, para que los archivados no ensucien la
+   *  vista por defecto (siguen existiendo, solo no estorban). */
+  estado?: "activos" | "archivados" | "todos";
 }
 
 export async function getClientes(
@@ -328,7 +332,7 @@ export async function getClientes(
   page = 1,
   pageSize = PAGE_SIZE
 ): Promise<{ ok: true; items: AdminClienteListItem[]; total: number } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   let query = supabase
     .from("admin_resumen_clientes")
@@ -339,6 +343,8 @@ export async function getClientes(
   if (filtros.tipoCliente) query = query.eq("tipo_cliente", filtros.tipoCliente);
   if (filtros.incentivo === "sin_incentivo") query = query.is("incentivo_tipo", null);
   else if (filtros.incentivo) query = query.eq("incentivo_tipo", filtros.incentivo);
+  if (filtros.estado === "archivados") query = query.eq("activo", false);
+  else if (filtros.estado !== "todos") query = query.eq("activo", true);
 
   const from = (page - 1) * pageSize;
   const { data, error, count } = await query.range(from, from + pageSize - 1);
@@ -362,6 +368,7 @@ export async function getClientes(
       nombre: row.nombre_visible,
       identificacion: row.identificacion,
       tipoCliente: row.tipo_cliente as "natural" | "juridica",
+      activo: row.activo,
       pais: row.pais_nombre,
       usuarios: Number(row.usuarios),
       incentivoActivo: (row.incentivo_tipo as IncentivoTipo | null) ?? null,
@@ -373,17 +380,17 @@ export async function getClientes(
 }
 
 export async function getTotalAcumuladoGlobal(): Promise<number> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { data } = await supabase.from("pagos").select("monto");
   return (data ?? []).reduce((acc, p) => acc + Number(p.monto), 0);
 }
 
 export async function getClienteDetalle(id: string): Promise<{ ok: true; data: AdminClienteDetalle } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   const { data: cliente, error } = await supabase
     .from("clientes")
-    .select("id, nombre_visible, identificacion, tipo_cliente, email, paises(nombre)")
+    .select("id, nombre_visible, identificacion, tipo_cliente, activo, email, paises(nombre)")
     .eq("id", id)
     .maybeSingle();
   if (error || !cliente) return { ok: false };
@@ -409,6 +416,7 @@ export async function getClienteDetalle(id: string): Promise<{ ok: true; data: A
       nombre: cliente.nombre_visible,
       identificacion: cliente.identificacion,
       tipoCliente: cliente.tipo_cliente as "natural" | "juridica",
+      activo: cliente.activo,
       pais: pais ?? null,
       email: cliente.email,
       incentivoActivo: (incentivo?.tipo as IncentivoTipo | null) ?? null,
@@ -446,7 +454,7 @@ export async function getPagos(
   page = 1,
   pageSize = PAGE_SIZE
 ): Promise<{ ok: true; pagos: AdminPago[]; total: number } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   let query = supabase
     .from("pagos")
@@ -493,7 +501,7 @@ export interface PagosStats {
 }
 
 export async function getPagosStats(desde?: string, hasta?: string): Promise<{ ok: true; data: PagosStats } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   let query = supabase.from("pagos").select("monto, cliente_id");
   if (desde) query = query.gte("fecha", desde);
   if (hasta) query = query.lte("fecha", hasta);
@@ -516,7 +524,7 @@ export async function getPagosStats(desde?: string, hasta?: string): Promise<{ o
 }
 
 export async function getClientesOptions(): Promise<{ id: string; nombre: string }[]> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { data } = await supabase.from("clientes").select("id, nombre_visible").order("nombre_visible");
   return (data ?? []).map((c) => ({ id: c.id, nombre: c.nombre_visible }));
 }
@@ -536,7 +544,7 @@ export async function getCodigos(
   page = 1,
   pageSize = PAGE_SIZE
 ): Promise<{ ok: true; items: AdminCodigo[]; total: number } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   let query = supabase
     .from("codigos_invitacion")
@@ -575,7 +583,7 @@ export async function getCodigos(
 }
 
 export async function getCodigosStats(): Promise<{ totalGenerados: number; activosHoy: number }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const [{ count: total }, { count: activos }] = await Promise.all([
     supabase.from("codigos_invitacion").select("id", { count: "exact", head: true }),
     supabase.from("codigos_invitacion").select("id", { count: "exact", head: true }).eq("estado", "activo"),

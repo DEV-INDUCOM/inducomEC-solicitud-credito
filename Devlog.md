@@ -869,4 +869,216 @@ consultable.
 - Se crea `flujo.md` (raíz del proyecto): explicación del flujo completo del
   formulario de solicitud de crédito, para alguien sin contexto previo del
   proyecto — qué archivos intervienen, cuándo se activa cada paso, y qué
-  significa en términos simples el `fetch` hacia `/api/solicitud-credito`. 
+  significa en términos simples el `fetch` hacia `/api/solicitud-credito`.
+
+---
+
+## Sesión — 2026-08-06
+
+**Tema principal: se separó la sesión de autenticación de `/admin` y `/portal`,
+que hasta hoy compartían la misma cookie en el mismo navegador.**
+
+### El problema reportado
+
+En producción (`inducom-ec-solicitud-credito.vercel.app`), personal de INDUCOM
+que tenía abiertas a la vez una pestaña en `/admin` y otra en `/portal/dashboard`
+veía que, al iniciar sesión o navegar en una, la otra "se cerraba" sola.
+
+**Causa real (verificada en el código, no asumida):** `/admin` y `/portal` viven
+en el mismo dominio y usan el mismo proyecto de Supabase, y ambos clientes de
+Supabase (`src/lib/supabase/client.ts` y `server.ts`) usaban el nombre de
+cookie de sesión **por defecto**, idéntico para los dos. Un navegador solo
+puede tener **una** sesión activa por cookie — así que iniciar sesión como
+admin sobrescribía la cookie que el portal necesitaba para saber quién eras
+(y viceversa). No era un bug de lógica, sino de que ambas superficies
+"peleaban" por el mismo casillero de almacenamiento.
+
+### La solución: cada superficie, su propia cookie
+
+- **`src/lib/supabase/cookie-config.ts`** (nuevo): define
+  `ADMIN_AUTH_COOKIE_NAME = "sb-admin-auth-token"`, el nombre de cookie
+  exclusivo para el panel admin. El portal sigue usando el nombre por
+  defecto de Supabase (no se tocó, para no invalidar sesiones de clientes ya
+  activas en producción).
+- **`client.ts` / `server.ts`**: `createSupabaseBrowserClient()` y
+  `createSupabaseServerClient()` ahora aceptan un `{ cookieName? }` opcional.
+  Sin pasarlo, se comportan exactamente igual que antes — cambio
+  retrocompatible por diseño.
+- **`src/proxy.ts`** (middleware): antes creaba un solo cliente de Supabase
+  para revisar tanto `/admin/*` como `/portal/*`. Se separó en dos ramas: si
+  la ruta empieza con `/admin`, crea el cliente con la cookie de admin; si
+  no, con la de siempre.
+- **Lado admin actualizado para usar la cookie de admin en todos lados**:
+  `AdminLoginForm.tsx` (login), y cada `createSupabaseServerClient()` dentro
+  de `src/lib/admin/actions.ts` y `src/lib/admin/queries.ts` (18 llamadas en
+  total entre ambos archivos).
+- **`LogoutButton.tsx`**: es un componente compartido entre `/admin` y
+  `/portal`. Se le agregó una prop `cookieName` opcional; los 3 usos dentro
+  del admin (`AdminSidebar.tsx`, `(admin)/layout.tsx`,
+  `admin/perfil/page.tsx`) ahora se la pasan, para que "Cerrar sesión" borre
+  la cookie correcta y no la del portal.
+
+### Verificación hecha esta sesión
+
+- `tsc --noEmit`, `npm run lint` (0 errores, mismos 7 warnings preexistentes
+  de siempre) y `npm run build` de producción, los tres en verde.
+- Se confirmó en el código fuente de `@supabase/ssr` (`createBrowserClient.js`
+  / `createServerClient.js`, versión instalada 0.7.0) que `cookieOptions.name`
+  efectivamente se mapea a `storageKey` internamente — es el mecanismo real
+  que separa las cookies, no una suposición.
+
+**Sin cambios visuales.** Es un cambio puramente de manejo de sesión/cookies
+en el servidor y el middleware — ningún componente, estilo o layout cambió.
+
+**Pendiente para que tome efecto:** hacer commit + push. Una vez desplegado
+en Vercel, cualquiera con sesión activa (admin o cliente) va a tener que
+volver a iniciar sesión **una sola vez** (la cookie compartida vieja ya no
+aplica); de ahí en adelante `/admin` y `/portal` conviven sin pisarse en el
+mismo navegador.
+
+---
+
+## Sesión — 2026-08-07
+
+**Tema principal: eliminar un cliente desde el panel admin se resolvió con
+"archivar" (soft delete) en vez de borrar la fila, y de paso se revisó todo
+el flujo de edición de clientes que ya existía sin que esta sesión lo hubiera
+construido.**
+
+### Qué es un "soft delete" y por qué se usó acá
+
+Un **hard delete** es un `DELETE` de toda la vida: la fila desaparece de la
+base para siempre. Un **soft delete** ("borrado suave") es una simulación de
+borrado: la fila **sigue existiendo**, pero se marca con una columna (acá,
+`clientes.activo = false`) que hace que el resto del sistema la trate como
+si no estuviera — no aparece en las vistas normales, y pierde acceso — sin
+que el dato deje de existir físicamente en la base.
+
+**Por qué se prefirió acá:**
+- **Es reversible.** Archivar por error y reactivar es gratis. Un `delete`
+  no tiene vuelta atrás.
+- **No arriesga historial financiero/legal.** El cliente puede tener `pagos`
+  reales y `solicitudes_credito` con documentos adjuntos — borrar la fila
+  obliga a decidir en el momento qué hacer con todo eso (¿se borra también?
+  ¿se bloquea el delete?). Archivar no toca ninguna de esas tablas.
+- **Ya existía casi toda la infraestructura.** `clientes.activo` se creó en
+  la sesión del 2026-07-14 (para el módulo de incentivos) y `getPortalContext()`
+  (`src/lib/portal/queries.ts`) **ya bloqueaba el acceso al portal** cuando
+  `activo = false`. Archivar a un cliente ya dejaba sus credenciales sin
+  efecto — solo faltaba la interfaz para activarlo/desactivarlo desde el panel.
+
+Se llegó a diseñar primero una función `eliminar_cliente` (hard delete, con
+loop borrando `auth.users`, `codigos_invitacion`, desvinculando
+`solicitudes_credito`, etc.) antes de que el usuario decidiera cambiar de
+enfoque a soft delete. Esa función **no se guardó ni se aplicó** — quedó
+descartada a propósito.
+
+### Hallazgo: ya existía una migración `editar_cliente` sin revisar
+
+Antes de tocar nada se releyó `supabase/migrations/20260807000000_editar_cliente.sql`
+(no creada en una sesión documentada en este Devlog) — ya daba a
+`personal_interno` permiso de `UPDATE` **sin restricción de columnas** sobre
+`clientes`, `personas_naturales` y `empresas`. Esto significa que **no hizo
+falta ninguna policy nueva** para poder togglear `activo`: el permiso ya
+alcanzaba, solo había que usarlo. También existía ya `EditarClienteModal.tsx`
+(edición de nombre/país/email/identificación/subtipo) y una migración
+`20260810000000_Sincronizar(perfil-authUsers).sql` con un trigger que
+sincroniza `perfiles.email` cuando cambia `auth.users.email`.
+
+### Cambios de esta sesión
+
+- **`supabase/migrations/20260811000000_archivar_clientes.sql`**: la vista
+  `admin_resumen_clientes` (la que alimenta la tabla de Empresas del panel)
+  no exponía la columna `activo` — se le agregó con un `create or replace
+  view`. Es el único cambio de base de datos que hizo falta.
+- **`src/components/ui/Switch.tsx`** (nuevo): toggle on/off real (no el
+  `ToggleChip` de pill que ya existía). Verde cuando está encendido, gris
+  neutro cuando no — nunca rojo, a pedido explícito del usuario ("apagado"
+  no es un error, es solo un estado).
+- **`archivarCliente(clienteId, activo)`** en `admin/actions.ts`: un
+  `update` directo sobre `clientes`, usando el permiso que ya existía.
+- **`ArchivarClienteToggle.tsx`** (nuevo, en `components/admin/`): junta el
+  `Switch` con la llamada a la acción y el mensaje de estado; en
+  `empresas/[id]/page.tsx` quedó en su propia tarjeta "Estado de la cuenta".
+- **Filtro Activos / Archivados / Todos** en `admin/empresas/page.tsx`, por
+  defecto "Activos" (los archivados no ensucian la vista normal, pero siguen
+  ahí). `getClientes()` en `queries.ts` ahora acepta `estado` en
+  `ClientesFiltros`.
+- **Badge "Archivado"** agregado en `ClientesTable.tsx` (desktop y móvil) y
+  en el header del detalle de empresa, junto al badge de incentivo.
+- `AdminClienteListItem` y `AdminClienteDetalle` (`admin/types.ts`) ganaron
+  el campo `activo: boolean`.
+
+### Verificación hecha esta sesión
+
+- `tsc --noEmit`, `npm run build` y `npm run lint` (0 errores, mismos 7
+  warnings preexistentes) — los tres en verde.
+
+**Sin cambios visuales fuera de lo descrito** (el switch nuevo, el badge, y
+el filtro) — no se tocó ningún otro componente ni estilo existente.
+
+### Ajustes de UI en la tabla de Empresas (mismo día, sesión continuada)
+
+Después de armar el switch de archivar, se revisó el espaciado de
+`ClientesTable.tsx` a pedido del usuario:
+
+- El switch de activo/inactivo se movió de una tarjeta aparte en el detalle
+  (`empresas/[id]/page.tsx`) hacia adentro de `EditarClienteModal.tsx` — se
+  guarda junto con el resto de los campos en un solo "Guardar cambios", en
+  vez de ser una acción instantánea separada. Se borró el componente
+  `ArchivarClienteToggle.tsx` y la función `archivarCliente()` (quedaban
+  redundantes) — todo pasa ahora por `actualizarCliente()`, que ya sube
+  `activo` al `update` de `clientes`.
+- El detalle sigue mostrando un badge "Archivado" de solo lectura en el
+  header (no interactivo), para verlo a simple vista sin abrir el modal.
+- La tabla venía con `w-full` puro: al agregar la columna "Estado" se
+  comprimían todas las columnas para seguir cabiendo en el ancho del
+  contenedor. Se le agregó `min-w-[…]` a la `<table>` para que en vez de
+  apretarse, se ensanche y el contenedor (`overflow-x-auto`) scrollee
+  horizontal.
+- Al subir el padding de las celdas (`px-8`) sin más, el texto largo
+  ("Incentivo activo", "Persona natural · 8711368", etc.) se partía en 2-3
+  líneas dentro de cada celda — se veía peor, no mejor. La causa real: sin
+  `whitespace-nowrap`, el navegador prioriza no desbordar sobre no partir
+  el texto. Se agregó `whitespace-nowrap` a todas las celdas (`<th>` y
+  `<td>`) de la tabla, y se subió el `min-w` de la tabla en consecuencia
+  (el contenido sin partir pide más ancho real).
+
+### Investigación: recuperar contraseña no le funcionaba a un cliente
+
+El usuario reportó que un cliente de prueba ("lionel messi") no podía
+restablecer su contraseña. Se investigó sin tocar código, solo leyendo y
+verificando contra una consulta SQL que el usuario corrió él mismo:
+
+- **Causa raíz encontrada:** `ForgotPasswordForm.tsx:34` llama
+  `supabase.auth.resetPasswordForEmail(email)`, que valida el correo
+  **únicamente contra `auth.users.email`** (la tabla interna de Supabase
+  Auth) — no contra `clientes.email` ni `perfiles.email`.
+- La consulta del usuario mostró que ese cliente tiene **dos correos
+  distintos guardados**: `auth.users.email` = `perfiles.email` =
+  `hector.lrugel@icloud.com` (el real, de login), pero `clientes.email` =
+  `hrugel@uees.edu.ec` (el correo de contacto capturado en la solicitud de
+  crédito, sin relación con el login). Si el cliente intentaba recuperar la
+  contraseña con el correo de `clientes` en vez del de `auth.users`, el
+  formulario igual muestra el mensaje genérico de éxito ("si el correo está
+  registrado, recibirás un enlace") por diseño de seguridad de Supabase —
+  pero nunca llega nada, porque ese correo no tiene cuenta asociada.
+- Esto **confirma en la práctica** el problema de duplicidad de `email` (en
+  `auth.users`, `perfiles` y `clientes` a la vez) que había quedado
+  pendiente de analizar en una sesión anterior. Sigue pendiente decidir la
+  solución (la recomendación en discusión es dejar `email` solo en
+  `perfiles`, ya usado como fuente para el login, y no duplicarlo en
+  `clientes`).
+- **Sin resolver todavía:** el usuario probó de nuevo con el correo
+  correcto (`hector.lrugel@icloud.com`, confirmado en la captura del
+  formulario) y el correo de recuperación **tampoco llegó** a la bandeja de
+  entrada. Esto es un síntoma **distinto** al de la duplicidad de correos —
+  con el correo correcto, el envío en sí parece estar fallando o no
+  disparándose. No se investigó la causa en esta sesión (posibles pistas
+  para la próxima: logs de Auth en el dashboard de Supabase, límites de
+  envío del SMTP configurado — ver sesión 2026-07-13 sobre el SMTP de Zoho
+  para el correo de recuperación —, carpeta de spam, o que el
+  `resetPasswordForEmail` esté fallando en silencio en el cliente).
+
+**Pendiente:** correr `20260811000000_archivar_clientes.sql` contra el
+Supabase real, y hacer commit + push para que se refleje en producción. 

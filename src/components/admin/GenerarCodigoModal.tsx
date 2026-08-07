@@ -41,8 +41,11 @@ export function GenerarCodigoModal({
     setStatus({ tone: "loading", message: "Generando código…" });
 
     const result =
+      //!  condicional para saber si se genera un codigo para un cliente existente o se crea un cliente manualmente y se genera un codigo para el nuevo cliente
       origen === "existente"
-        ? await generarCodigo(String(form.get("clienteId") ?? ""), diasValidez)
+      //?Por verdadero genera un codigo para un cliente existente
+        ? await generarCodigo(String(form.get("clienteId") ?? ""), diasValidez) 
+        //?Por falso crea un cliente manualmente y genera un codigo para el nuevo cliente
         : await crearClienteManual({
             tipoCliente,
             paisId: Number(form.get("paisId")),

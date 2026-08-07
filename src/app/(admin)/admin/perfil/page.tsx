@@ -4,6 +4,7 @@ import { IconMail, IconShieldCheck, IconUserCircle } from "@tabler/icons-react";
 import { Card, IconTile } from "@/components/ui/Card";
 import { LogoutButton } from "@/components/layout/portal/LogoutButton";
 import { getAdminContext } from "@/lib/admin/queries";
+import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import { routes } from "@/lib/config/site";
 
 export const metadata: Metadata = { title: "Perfil" };
@@ -47,7 +48,7 @@ export default async function AdminPerfilPage() {
           </li>
         </ul>
 
-        <LogoutButton redirectTo={routes.adminLogin} />
+        <LogoutButton redirectTo={routes.adminLogin} cookieName={ADMIN_AUTH_COOKIE_NAME} />
       </Card>
     </div>
   );

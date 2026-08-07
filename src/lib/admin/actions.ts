@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import { routes } from "@/lib/config/site";
 import { serverEnv } from "@/lib/config/env.server";
 import type { EstadoSolicitud, IncentivoTipo, MetodoPago, OrigenPago, TipoCliente } from "./types";
@@ -18,7 +19,7 @@ function diasValidezError(dias: number): string | null {
 }
 
 export async function obtenerUrlDocumento(storagePath: string): Promise<{ ok: true; url: string } | { ok: false }> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   // download: true agrega Content-Disposition: attachment a la URL firmada,
   // así el navegador siempre descarga el archivo en vez de mostrarlo inline
   // (antes abría el PDF/imagen en la pestaña nueva en lugar de bajarlo).
@@ -34,7 +35,7 @@ export async function actualizarEstadoSolicitud(
   nuevoEstado: EstadoSolicitud,
   nota: string
 ): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { error } = await supabase.rpc("actualizar_estado_solicitud", {
     p_solicitud_id: solicitudId,
     p_nuevo_estado: nuevoEstado,
@@ -62,7 +63,7 @@ export async function registrarPago(input: RegistrarPagoInput): Promise<ActionRe
     return { ok: false, message: "Completa los campos obligatorios del pago." };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -99,7 +100,7 @@ export async function generarCodigo(
   const diasError = diasValidezError(diasValidez);
   if (diasError) return { ok: false, message: diasError };
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { data, error } = await supabase
     .rpc("generar_codigo_invitacion", { p_cliente_id: clienteId, p_dias_validez: diasValidez })
     .single();
@@ -141,7 +142,7 @@ export async function crearClienteManual(
   const diasError = diasValidezError(input.diasValidez);
   if (diasError) return { ok: false, message: diasError };
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { data, error } = await supabase
     .rpc("crear_cliente_manual", {
       p_tipo_cliente: input.tipoCliente,
@@ -168,6 +169,150 @@ export async function crearClienteManual(
   };
 }
 
+export interface ClienteEditable {
+  id: string;
+  tipoCliente: TipoCliente;
+  activo: boolean;
+  paisId: number;
+  nombreVisible: string;
+  email: string;
+  identificacion: string;
+  nombres: string;
+  apellidos: string;
+  representanteLegal: string;
+}
+
+/**
+ * Datos completos de un cliente para poblar el formulario de edición. La fila
+ * de la tabla de Empresas viene de la vista `admin_resumen_clientes`, que no
+ * trae correo, `pais_id` ni los campos del subtipo: se piden acá, recién al
+ * abrir el modal, en vez de engordar la consulta del listado.
+ */
+export async function obtenerClienteEditable(
+  clienteId: string
+): Promise<{ ok: true; data: ClienteEditable } | { ok: false; message: string }> {
+  if (!clienteId) return { ok: false, message: GENERIC_ERROR };
+
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
+  const { data: cliente, error } = await supabase
+    .from("clientes")
+    .select("id, tipo_cliente, activo, pais_id, nombre_visible, email, identificacion")
+    .eq("id", clienteId)
+    .maybeSingle();
+
+  if (error || !cliente) return { ok: false, message: GENERIC_ERROR };
+
+  // Los campos propios del subtipo viven en otra tabla según `tipo_cliente`;
+  // se consulta solo la que corresponde.
+  let nombres = "";
+  let apellidos = "";
+  let representanteLegal = "";
+
+  if (cliente.tipo_cliente === "natural") {
+    const { data } = await supabase
+      .from("personas_naturales")
+      .select("nombres, apellidos")
+      .eq("cliente_id", clienteId)
+      .maybeSingle();
+    nombres = data?.nombres ?? "";
+    apellidos = data?.apellidos ?? "";
+  } else {
+    const { data } = await supabase
+      .from("empresas")
+      .select("representante_legal")
+      .eq("cliente_id", clienteId)
+      .maybeSingle();
+    representanteLegal = data?.representante_legal ?? "";
+  }
+
+  return {
+    ok: true,
+    data: {
+      id: cliente.id,
+      tipoCliente: cliente.tipo_cliente as TipoCliente,
+      activo: cliente.activo,
+      paisId: cliente.pais_id,
+      nombreVisible: cliente.nombre_visible,
+      email: cliente.email,
+      identificacion: cliente.identificacion,
+      nombres,
+      apellidos,
+      representanteLegal,
+    },
+  };
+}
+
+export interface ActualizarClienteInput {
+  clienteId: string;
+  tipoCliente: TipoCliente;
+  activo: boolean;
+  paisId: number;
+  nombreVisible: string;
+  email: string;
+  identificacion: string;
+  nombres?: string;
+  apellidos?: string;
+  representanteLegal?: string;
+}
+
+/**
+ * Edita los datos de un cliente existente. Mismas validaciones que
+ * `crearClienteManual` para que un registro editado no pueda quedar en un
+ * estado que la creación no habría permitido.
+ *
+ * `tipo_cliente` no se actualiza: cambiarlo implicaría mover la fila entre
+ * `personas_naturales` y `empresas` (columnas `not null` distintas), que no es
+ * una edición de campo. El modal lo muestra como dato fijo.
+ */
+export async function actualizarCliente(input: ActualizarClienteInput): Promise<ActionResult> {
+  if (!input.clienteId) return { ok: false, message: GENERIC_ERROR };
+  if (!input.nombreVisible.trim() || !input.email.trim() || !input.identificacion.trim() || !input.paisId) {
+    return { ok: false, message: "Completa los datos obligatorios de la empresa." };
+  }
+  if (input.tipoCliente === "natural" && (!input.nombres?.trim() || !input.apellidos?.trim())) {
+    return { ok: false, message: "Ingresa nombres y apellidos." };
+  }
+  if (input.tipoCliente === "juridica" && !input.representanteLegal?.trim()) {
+    return { ok: false, message: "Ingresa el representante legal." };
+  }
+
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
+
+  const { error } = await supabase
+    .from("clientes")
+    .update({
+      pais_id: input.paisId,
+      nombre_visible: input.nombreVisible.trim(),
+      email: input.email.trim(),
+      identificacion: input.identificacion.trim(),
+      activo: input.activo,
+    })
+    .eq("id", input.clienteId);
+
+  if (error) return { ok: false, message: GENERIC_ERROR };
+
+  const { error: subtipoError } =
+    input.tipoCliente === "natural"
+      ? await supabase
+          .from("personas_naturales")
+          .update({
+            nombres: (input.nombres ?? "").trim(),
+            apellidos: (input.apellidos ?? "").trim(),
+          })
+          .eq("cliente_id", input.clienteId)
+      : await supabase
+          .from("empresas")
+          .update({ representante_legal: (input.representanteLegal ?? "").trim() })
+          .eq("cliente_id", input.clienteId);
+
+  if (subtipoError) return { ok: false, message: GENERIC_ERROR };
+
+  revalidatePath(routes.adminEmpresas);
+  revalidatePath(`${routes.adminEmpresas}/${input.clienteId}`);
+  revalidatePath(routes.adminResumen);
+  return { ok: true };
+}
+
 /**
  * Asigna, cambia o quita el incentivo de un cliente. `incentivos_cliente`
  * tiene `cliente_id` como primary key (un incentivo activo por cliente), así
@@ -177,7 +322,7 @@ export async function crearClienteManual(
  * sin necesitar un RPC dedicado.
  */
 export async function asignarIncentivo(clienteId: string, tipo: IncentivoTipo | null): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
 
   const { error } = tipo
     ? await supabase.from("incentivos_cliente").upsert({ cliente_id: clienteId, tipo }, { onConflict: "cliente_id" })
@@ -206,7 +351,7 @@ export async function enviarCorreoCodigo(codigo: string): Promise<ActionResult> 
     return { ok: false, message: "El envío de correo no está configurado." };
   }
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
   const { data, error } = await supabase
     .from("codigos_invitacion")
     .select("codigo, fecha_vencimiento, clientes(nombre_visible, email)")
