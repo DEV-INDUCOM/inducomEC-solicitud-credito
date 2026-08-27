@@ -138,6 +138,8 @@ export default async function AdminPagosPage({
               <option value="">Todos</option>
               <option value="manual">{origenPagoLabel.manual}</option>
               <option value="csv">{origenPagoLabel.csv}</option>
+              {/* 'paypal' es origen válido desde la integración con W4. */}
+              <option value="paypal">{origenPagoLabel.paypal}</option>
             </select>
           </label>
 
@@ -171,7 +173,7 @@ export default async function AdminPagosPage({
           <div className="flex items-center justify-between rounded-lg bg-brand-navy-900 px-5 py-4 text-[var(--text-on-dark)]">
             <p className="text-sm font-semibold uppercase tracking-[0.04em]">Total filtrado</p>
             <p className="font-mono text-lg font-semibold tabular-nums">
-              {formatMonto(resultado.pagos.reduce((acc, p) => acc + p.monto, 0))}
+              {formatMonto(resultado.pagos.reduce((acc, p) => acc + p.montoPagado, 0))}
             </p>
           </div>
           <Pagination basePath={routes.adminPagos} searchParams={sp} page={page} total={resultado.total} pageSize={PAGE_SIZE} />

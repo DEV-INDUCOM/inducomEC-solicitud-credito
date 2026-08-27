@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { IconInbox } from "@tabler/icons-react";
+import { IconExternalLink, IconInbox } from "@tabler/icons-react";
 import { IconTile } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatFecha, formatMonto } from "@/lib/admin/format";
-import { metodoPagoLabel, origenPagoLabel } from "@/lib/admin/labels";
 import { routes } from "@/lib/config/site";
 import type { AdminPago } from "@/lib/admin/types";
 
@@ -18,7 +16,7 @@ export function PagosTable({ pagos, showCliente = true }: { pagos: AdminPago[]; 
           </IconTile>
         }
         title="Aún no hay pagos registrados"
-        description="Los pagos aparecerán aquí una vez que se registren manualmente."
+        description="Los pagos aparecerán aquí cuando se registren manualmente o lleguen por PayPal."
       />
     );
   }
@@ -29,17 +27,18 @@ export function PagosTable({ pagos, showCliente = true }: { pagos: AdminPago[]; 
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-surface-alt)] text-xs uppercase tracking-[0.04em] text-[var(--text-secondary)]">
             <tr>
+              <th className="px-4 py-3 font-medium">Fecha</th>
               {showCliente && <th className="px-4 py-3 font-medium">Empresa</th>}
-              <th className="px-4 py-3 text-right font-medium">Monto</th>
-              <th className="px-4 py-3 font-medium">Fecha de pago</th>
-              <th className="px-4 py-3 font-medium">Método</th>
-              <th className="px-4 py-3 font-medium">Referencia</th>
-              <th className="px-4 py-3 font-medium">Cargado el</th>
+              <th className="px-4 py-3 font-medium">Negocio</th>
+              <th className="px-4 py-3 font-medium">Número de cotización</th>
+              <th className="px-4 py-3 font-medium">Cotización</th>
+              <th className="px-4 py-3 text-right font-medium">Monto pagado</th>
             </tr>
           </thead>
           <tbody>
             {pagos.map((pago) => (
               <tr key={pago.id} className="border-t border-[color:var(--border)] hover:bg-[var(--bg-page-soft)]">
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</td>
                 {showCliente && (
                   <td className="px-4 py-3">
                     <Link
@@ -50,17 +49,26 @@ export function PagosTable({ pagos, showCliente = true }: { pagos: AdminPago[]; 
                     </Link>
                   </td>
                 )}
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-[var(--text-primary)]">
-                  {formatMonto(pago.monto)}
-                </td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{pago.dealNombre ?? "—"}</td>
+                <td className="px-4 py-3 text-[var(--text-primary)]">{pago.cotizacionNumero ?? "—"}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge tone={pago.origen === "manual" ? "info" : "neutral"}>
-                    {pago.metodoPago ? metodoPagoLabel[pago.metodoPago] : origenPagoLabel[pago.origen]}
-                  </StatusBadge>
+                  {pago.cotizacionUrl ? (
+                    <a
+                      href={pago.cotizacionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[var(--action-primary)] hover:text-[var(--link-hover)]"
+                    >
+                      Ver cotización
+                      <IconExternalLink size={14} stroke={1.75} />
+                    </a>
+                  ) : (
+                    <span className="text-[var(--text-muted)]">—</span>
+                  )}
                 </td>
-                <td className="px-4 py-3 font-mono text-[var(--text-primary)]">{pago.referencia ?? "—"}</td>
-                <td className="px-4 py-3 text-[var(--text-secondary)]">{formatFecha(pago.createdAt)}</td>
+                <td className="px-4 py-3 text-right font-mono tabular-nums text-[var(--text-primary)]">
+                  {formatMonto(pago.montoPagado)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -79,13 +87,29 @@ export function PagosTable({ pagos, showCliente = true }: { pagos: AdminPago[]; 
                 <span className="text-sm text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</span>
               )}
               <span className="font-mono font-medium tabular-nums text-[var(--text-primary)]">
-                {formatMonto(pago.monto)}
+                {formatMonto(pago.montoPagado)}
               </span>
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-muted)]">
-              <span>{pago.metodoPago ? metodoPagoLabel[pago.metodoPago] : origenPagoLabel[pago.origen]}</span>
-              {pago.referencia && <span className="font-mono">Ref. {pago.referencia}</span>}
-            </div>
+            {showCliente && (
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</p>
+            )}
+            {pago.dealNombre && (
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{pago.dealNombre}</p>
+            )}
+            {pago.cotizacionNumero && (
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Cotización {pago.cotizacionNumero}</p>
+            )}
+            {pago.cotizacionUrl && (
+              <a
+                href={pago.cotizacionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-sm text-[var(--action-primary)]"
+              >
+                Ver cotización
+                <IconExternalLink size={14} stroke={1.75} />
+              </a>
+            )}
           </li>
         ))}
       </ul>

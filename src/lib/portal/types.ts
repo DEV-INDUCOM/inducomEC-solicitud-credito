@@ -20,10 +20,18 @@ export interface PortalContext {
 
 export interface PortalPago {
   id: string;
-  monto: number;
+  montoPagado: number;
   fecha: string;
-  origen: "manual" | "csv";
+  origen: "manual" | "csv" | "paypal";
   referencia: string | null;
+  /** Snapshot de la cotización que originó el pago (solo pagos PayPal).
+   *  Se guardan en `pagos` al registrarlo, no se leen del esquema `payments`:
+   *  si la cotización se edita después, el histórico no debe cambiar. */
+  cotizacionNumero: string | null;
+  dealNombre: string | null;
+  montoCotizado: number | null;
+  /** Link público a la cotización; el cliente puede abrirlo. */
+  cotizacionUrl: string | null;
   /** Cuándo se cargó el pago al sistema (no la fecha de la transacción):
    *  es lo que respalda el aviso "saldo actualizado al …" en la UI. */
   creadoEn: string;

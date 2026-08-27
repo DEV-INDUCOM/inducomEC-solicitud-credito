@@ -60,7 +60,7 @@ export default async function DashboardPage() {
         <section className="flex flex-col gap-4">
           <h2 className="text-xl font-semibold text-[var(--text-primary)]">Últimos movimientos</h2>
           {pagosResult.ok ? (
-            <PaymentHistory pagos={pagosResult.pagos.slice(0, 5)} />
+            <PaymentHistory pagos={pagosResult.pagos.slice(0, 5)} empresaNombre={cliente.nombre} />
           ) : (
             <ErrorState title="No pudimos cargar tus pagos" />
           )}

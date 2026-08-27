@@ -96,7 +96,9 @@ export async function getPagos(
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("pagos")
-    .select("id, monto, fecha, origen, referencia, created_at")
+    .select(
+      "id, monto_pagado, fecha, origen, referencia, created_at, cotizacion_numero, deal_nombre, monto_cotizado, cotizacion_url"
+    )
     .eq("cliente_id", clienteId)
     .order("fecha", { ascending: false });
   if (limit) query = query.limit(limit);
@@ -108,11 +110,16 @@ export async function getPagos(
     ok: true,
     pagos: data.map((pago) => ({
       id: pago.id,
-      monto: Number(pago.monto),
+      montoPagado: Number(pago.monto_pagado),
       fecha: pago.fecha,
-      origen: pago.origen as "manual" | "csv",
+      origen: pago.origen as "manual" | "csv" | "paypal",
       referencia: pago.referencia,
       creadoEn: pago.created_at,
+      // Snapshot de la cotización: null en pagos manuales/CSV.
+      cotizacionNumero: pago.cotizacion_numero,
+      dealNombre: pago.deal_nombre,
+      montoCotizado: pago.monto_cotizado === null ? null : Number(pago.monto_cotizado),
+      cotizacionUrl: pago.cotizacion_url,
     })),
   };
 }

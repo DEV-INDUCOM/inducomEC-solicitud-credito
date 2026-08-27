@@ -42,11 +42,13 @@ export const metodoPagoLabel: Record<MetodoPago, string> = {
   cheque: "Cheque",
   ventanilla: "Pago en ventanilla",
   otro: "Otro",
+  paypal: "PayPal",
 };
 
 export const origenPagoLabel: Record<OrigenPago, string> = {
   manual: "Carga manual",
   csv: "Carga CSV",
+  paypal: "PayPal (automático)",
 };
 
 export const tipoClienteLabel: Record<"natural" | "juridica", string> = {

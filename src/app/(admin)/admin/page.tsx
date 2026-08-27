@@ -105,7 +105,7 @@ export default async function AdminResumenPage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="font-mono text-sm font-semibold tabular-nums text-[var(--text-primary)]">
-                        {formatMonto(pago.monto)}
+                        {formatMonto(pago.montoPagado)}
                       </p>
                       <p className="text-xs text-[var(--text-muted)]">{formatFecha(pago.fecha)}</p>
                     </div>

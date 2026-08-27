@@ -31,7 +31,8 @@ export default async function PaypalPage() {
       </div>
 
       <Alert variant="info" title="El saldo no es en tiempo real">
-        Se actualiza cuando INDUCOM carga los pagos de forma manual o por CSV.
+        Los pagos con PayPal se registran automáticamente al confirmarse. Los demás se
+        actualizan cuando INDUCOM los carga de forma manual o por CSV.
       </Alert>
 
       {saldoResult.ok && pagosResult.ok ? (
@@ -49,7 +50,7 @@ export default async function PaypalPage() {
       <section className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold text-[var(--text-primary)]">Historial de pagos</h2>
         {pagosResult.ok ? (
-          <PaymentHistory pagos={pagosResult.pagos} />
+          <PaymentHistory pagos={pagosResult.pagos} empresaNombre={cliente.nombre} />
         ) : (
           <ErrorState title="No pudimos cargar tu historial de pagos" />
         )}

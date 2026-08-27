@@ -1,16 +1,16 @@
-import { IconInbox } from "@tabler/icons-react";
+import { IconExternalLink, IconInbox } from "@tabler/icons-react";
 import { IconTile } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatFecha, formatMonto } from "@/lib/portal/format";
 import type { PortalPago } from "@/lib/portal/types";
 
-const origenLabel: Record<PortalPago["origen"], string> = {
-  manual: "Carga manual",
-  csv: "Carga CSV",
-};
-
-export function PaymentHistory({ pagos }: { pagos: PortalPago[] }) {
+export function PaymentHistory({
+  pagos,
+  empresaNombre,
+}: {
+  pagos: PortalPago[];
+  empresaNombre: string;
+}) {
   if (pagos.length === 0) {
     return (
       <EmptyState
@@ -33,23 +33,37 @@ export function PaymentHistory({ pagos }: { pagos: PortalPago[] }) {
           <thead className="bg-[var(--bg-surface-alt)] text-xs uppercase tracking-[0.04em] text-[var(--text-secondary)]">
             <tr>
               <th className="px-4 py-3 font-medium">Fecha</th>
-              <th className="px-4 py-3 font-medium">Referencia</th>
-              <th className="px-4 py-3 font-medium">Origen</th>
-              <th className="px-4 py-3 text-right font-medium">Monto</th>
+              <th className="px-4 py-3 font-medium">Empresa</th>
+              <th className="px-4 py-3 font-medium">Negocio</th>
+              <th className="px-4 py-3 font-medium">Número de cotización</th>
+              <th className="px-4 py-3 font-medium">Cotización</th>
+              <th className="px-4 py-3 text-right font-medium">Monto pagado</th>
             </tr>
           </thead>
           <tbody>
             {pagos.map((pago) => (
               <tr key={pago.id} className="border-t border-[color:var(--border)]">
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</td>
-                <td className="px-4 py-3 font-mono text-[var(--text-primary)]">{pago.referencia ?? "—"}</td>
+                <td className="px-4 py-3 text-[var(--text-primary)]">{empresaNombre}</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{pago.dealNombre ?? "—"}</td>
+                <td className="px-4 py-3 text-[var(--text-primary)]">{pago.cotizacionNumero ?? "—"}</td>
                 <td className="px-4 py-3">
-                  <StatusBadge tone={pago.origen === "manual" ? "info" : "neutral"}>
-                    {origenLabel[pago.origen]}
-                  </StatusBadge>
+                  {pago.cotizacionUrl ? (
+                    <a
+                      href={pago.cotizacionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[var(--action-primary)] hover:text-[var(--link-hover)]"
+                    >
+                      Ver cotización
+                      <IconExternalLink size={14} stroke={1.75} />
+                    </a>
+                  ) : (
+                    <span className="text-[var(--text-muted)]">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right font-mono tabular-nums text-[var(--text-primary)]">
-                  {formatMonto(pago.monto)}
+                  {formatMonto(pago.montoPagado)}
                 </td>
               </tr>
             ))}
@@ -66,15 +80,29 @@ export function PaymentHistory({ pagos }: { pagos: PortalPago[] }) {
           >
             <div className="flex items-center justify-between">
               <span className="text-sm text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</span>
-              <StatusBadge tone={pago.origen === "manual" ? "info" : "neutral"}>
-                {origenLabel[pago.origen]}
-              </StatusBadge>
+              <span className="font-mono font-medium tabular-nums text-[var(--text-primary)]">
+                {formatMonto(pago.montoPagado)}
+              </span>
             </div>
-            <span className="font-mono text-lg font-medium tabular-nums text-[var(--text-primary)]">
-              {formatMonto(pago.monto)}
-            </span>
-            {pago.referencia && (
-              <span className="font-mono text-xs text-[var(--text-muted)]">Ref. {pago.referencia}</span>
+            <span className="text-sm text-[var(--text-primary)]">{empresaNombre}</span>
+            {pago.dealNombre && (
+              <span className="text-xs text-[var(--text-secondary)]">{pago.dealNombre}</span>
+            )}
+            {pago.cotizacionNumero && (
+              <span className="text-xs text-[var(--text-muted)]">
+                Cotización {pago.cotizacionNumero}
+              </span>
+            )}
+            {pago.cotizacionUrl && (
+              <a
+                href={pago.cotizacionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-[var(--action-primary)]"
+              >
+                Ver cotización
+                <IconExternalLink size={14} stroke={1.75} />
+              </a>
             )}
           </li>
         ))}

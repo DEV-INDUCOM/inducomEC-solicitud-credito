@@ -70,7 +70,7 @@ export async function registrarPago(input: RegistrarPagoInput): Promise<ActionRe
 
   const { error } = await supabase.from("pagos").insert({
     cliente_id: input.clienteId,
-    monto: input.monto,
+    monto_pagado: input.monto,
     fecha: input.fecha,
     origen: "manual" satisfies OrigenPago,
     metodo_pago: input.metodoPago,

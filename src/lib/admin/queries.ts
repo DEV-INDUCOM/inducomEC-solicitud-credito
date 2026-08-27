@@ -106,7 +106,7 @@ export async function getResumenStats(): Promise<{ ok: true; data: ResumenStats 
       .eq("estado", "en_revision"),
     supabase.from("clientes").select("id", { count: "exact", head: true }),
     supabase.from("perfiles").select("cliente_id"),
-    supabase.from("pagos").select("monto").gte("fecha", inicioMes()),
+    supabase.from("pagos").select("monto_pagado").gte("fecha", inicioMes()),
     supabase.from("codigos_invitacion").select("id", { count: "exact", head: true }).eq("estado", "activo"),
     supabase
       .from("codigos_invitacion")
@@ -128,7 +128,7 @@ export async function getResumenStats(): Promise<{ ok: true; data: ResumenStats 
   }
 
   const clientesConUsuarios = new Set((perfilesDistintos.data ?? []).map((p) => p.cliente_id)).size;
-  const totalPagosEsteMes = (pagosMes.data ?? []).reduce((acc, p) => acc + Number(p.monto), 0);
+  const totalPagosEsteMes = (pagosMes.data ?? []).reduce((acc, p) => acc + Number(p.monto_pagado), 0);
 
   return {
     ok: true,
@@ -381,8 +381,8 @@ export async function getClientes(
 
 export async function getTotalAcumuladoGlobal(): Promise<number> {
   const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
-  const { data } = await supabase.from("pagos").select("monto");
-  return (data ?? []).reduce((acc, p) => acc + Number(p.monto), 0);
+  const { data } = await supabase.from("pagos").select("monto_pagado");
+  return (data ?? []).reduce((acc, p) => acc + Number(p.monto_pagado), 0);
 }
 
 export async function getClienteDetalle(id: string): Promise<{ ok: true; data: AdminClienteDetalle } | { ok: false }> {
@@ -399,7 +399,9 @@ export async function getClienteDetalle(id: string): Promise<{ ok: true; data: A
     supabase.from("perfiles").select("id, email").eq("cliente_id", id),
     supabase
       .from("pagos")
-      .select("id, monto, fecha, origen, metodo_pago, referencia, created_at")
+      .select(
+        "id, monto_pagado, fecha, origen, metodo_pago, referencia, created_at, cotizacion_numero, deal_nombre, monto_cotizado, cotizacion_url"
+      )
       .eq("cliente_id", id)
       .order("fecha", { ascending: false }),
     supabase.from("incentivos_cliente").select("tipo").eq("cliente_id", id).maybeSingle(),
@@ -425,12 +427,17 @@ export async function getClienteDetalle(id: string): Promise<{ ok: true; data: A
         id: p.id,
         clienteId: id,
         clienteNombre: cliente.nombre_visible,
-        monto: Number(p.monto),
+        montoPagado: Number(p.monto_pagado),
         fecha: p.fecha,
         origen: p.origen as OrigenPago,
         metodoPago: p.metodo_pago as MetodoPago | null,
         referencia: p.referencia,
         createdAt: p.created_at,
+        // Snapshot de la cotización: null en pagos manuales/CSV.
+        cotizacionNumero: p.cotizacion_numero,
+        dealNombre: p.deal_nombre,
+        montoCotizado: p.monto_cotizado === null ? null : Number(p.monto_cotizado),
+        cotizacionUrl: p.cotizacion_url,
       })),
       saldo: Number(saldo?.saldo ?? 0),
     },
@@ -458,7 +465,7 @@ export async function getPagos(
 
   let query = supabase
     .from("pagos")
-    .select("id, monto, fecha, origen, metodo_pago, referencia, created_at, clientes(id, nombre_visible)", {
+    .select("id, monto_pagado, fecha, origen, metodo_pago, referencia, created_at, cotizacion_numero, deal_nombre, monto_cotizado, cotizacion_url, clientes(id, nombre_visible)", {
       count: "exact",
     })
     .order("fecha", { ascending: false });
@@ -483,12 +490,17 @@ export async function getPagos(
         id: row.id,
         clienteId: cliente?.id ?? "",
         clienteNombre: cliente?.nombre_visible ?? "—",
-        monto: Number(row.monto),
+        montoPagado: Number(row.monto_pagado),
         fecha: row.fecha,
         origen: row.origen as OrigenPago,
         metodoPago: row.metodo_pago as MetodoPago | null,
         referencia: row.referencia,
         createdAt: row.created_at,
+        // Snapshot de la cotización: null en pagos manuales/CSV.
+        cotizacionNumero: row.cotizacion_numero,
+        dealNombre: row.deal_nombre,
+        montoCotizado: row.monto_cotizado === null ? null : Number(row.monto_cotizado),
+        cotizacionUrl: row.cotizacion_url,
       };
     }),
   };
@@ -502,7 +514,7 @@ export interface PagosStats {
 
 export async function getPagosStats(desde?: string, hasta?: string): Promise<{ ok: true; data: PagosStats } | { ok: false }> {
   const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
-  let query = supabase.from("pagos").select("monto, cliente_id");
+  let query = supabase.from("pagos").select("monto_pagado, cliente_id");
   if (desde) query = query.gte("fecha", desde);
   if (hasta) query = query.lte("fecha", hasta);
 
@@ -512,10 +524,10 @@ export async function getPagosStats(desde?: string, hasta?: string): Promise<{ o
   const { data: incentivos } = await supabase.from("incentivos_cliente").select("cliente_id, tipo").eq("tipo", "cashback_1");
   const clientesCashback = new Set((incentivos ?? []).map((i) => i.cliente_id));
 
-  const totalPeriodo = data.reduce((acc, p) => acc + Number(p.monto), 0);
+  const totalPeriodo = data.reduce((acc, p) => acc + Number(p.monto_pagado), 0);
   const cashbackGenerado = data
     .filter((p) => clientesCashback.has(p.cliente_id))
-    .reduce((acc, p) => acc + Number(p.monto) * 0.01, 0);
+    .reduce((acc, p) => acc + Number(p.monto_pagado) * 0.01, 0);
 
   return {
     ok: true,

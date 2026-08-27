@@ -22,7 +22,7 @@ export const incentivoCatalogo: Record<
 /**
  * Con cashback activo, el "saldo acumulado" que se muestra es el 1% de lo
  * pagado (lo que el cliente realmente acredita), no el monto pagado en sí —
- * `getSaldo()` trae la suma bruta de `pagos.monto` desde la vista
+ * `getSaldo()` trae la suma bruta de `pagos.monto_pagado` desde la vista
  * `saldo_por_cliente`; acá se aplica la regla de negocio del incentivo.
  * Sin cashback activo, el saldo se muestra tal cual llega (bruto).
  */

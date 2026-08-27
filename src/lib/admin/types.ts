@@ -8,9 +8,9 @@ export type EstadoSolicitud = "recibido" | "en_revision" | "aprobado" | "rechaza
 
 export type TipoCliente = "natural" | "juridica";
 
-export type OrigenPago = "manual" | "csv";
+export type OrigenPago = "manual" | "csv" | "paypal";
 
-export type MetodoPago = "transferencia" | "tarjeta" | "efectivo" | "cheque" | "ventanilla" | "otro";
+export type MetodoPago = "transferencia" | "tarjeta" | "efectivo" | "cheque" | "ventanilla" | "otro" | "paypal";
 
 export type IncentivoTipo = "cashback_1" | "garantia_extendida" | "despacho_rapido";
 
@@ -94,12 +94,18 @@ export interface AdminPago {
   id: string;
   clienteId: string;
   clienteNombre: string;
-  monto: number;
+  montoPagado: number;
   fecha: string;
   origen: OrigenPago;
   metodoPago: MetodoPago | null;
   referencia: string | null;
   createdAt: string;
+  /** Snapshot de la cotización que originó el pago (solo pagos PayPal). */
+  cotizacionNumero: string | null;
+  dealNombre: string | null;
+  montoCotizado: number | null;
+  /** Link público a la cotización; el cliente puede abrirlo. */
+  cotizacionUrl: string | null;
 }
 
 export interface AdminCodigo {
