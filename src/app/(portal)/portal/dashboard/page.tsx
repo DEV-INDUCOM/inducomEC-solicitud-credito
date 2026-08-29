@@ -7,7 +7,6 @@ import { CompanySummary } from "@/components/portal/CompanySummary";
 import { PaymentHistory } from "@/components/portal/PaymentHistory";
 import { StatCard } from "@/components/portal/StatCard";
 import { formatFecha } from "@/lib/portal/format";
-import { calcularSaldoAcumulado } from "@/lib/portal/incentivos";
 import { portalNavItems } from "@/lib/portal/nav";
 import { getPagos, getPortalContext, getSaldo } from "@/lib/portal/queries";
 
@@ -37,10 +36,7 @@ export default async function DashboardPage() {
 
       {saldoResult.ok && pagosResult.ok ? (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <BalanceCard
-            saldo={calcularSaldoAcumulado(saldoResult.saldo, cliente.incentivoActivo)}
-            ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null}
-          />
+          <BalanceCard saldo={saldoResult.saldo} ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null} />
           <StatCard
             label="Pagos registrados"
             value={pagosResult.pagos.length}

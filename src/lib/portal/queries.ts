@@ -78,15 +78,21 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
   };
 });
 
+/**
+ * El "saldo" que ve el cliente es siempre el cashback (1% de lo pagado),
+ * no el monto bruto — decisión de negocio confirmada: ya no depende de si
+ * tiene el incentivo cashback_1 asignado. `saldo_cashback` lo calcula la
+ * vista `saldo_por_cliente` (ver 20260829000000_saldo_por_cliente_cashback.sql).
+ */
 export async function getSaldo(clienteId: string): Promise<{ ok: true; saldo: number } | { ok: false }> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("saldo_por_cliente")
-    .select("saldo")
+    .select("saldo_cashback")
     .eq("cliente_id", clienteId)
     .maybeSingle();
   if (error) return { ok: false };
-  return { ok: true, saldo: Number(data?.saldo ?? 0) };
+  return { ok: true, saldo: Number(data?.saldo_cashback ?? 0) };
 }
 
 export async function getPagos(

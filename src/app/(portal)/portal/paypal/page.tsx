@@ -5,7 +5,6 @@ import { BalanceCard } from "@/components/portal/BalanceCard";
 import { BenefitCard } from "@/components/portal/BenefitCard";
 import { IncentiveComparison } from "@/components/portal/ComparisonCard";
 import { PaymentHistory } from "@/components/portal/PaymentHistory";
-import { calcularSaldoAcumulado } from "@/lib/portal/incentivos";
 import { getPagos, getPortalContext, getSaldo } from "@/lib/portal/queries";
 
 export const metadata: Metadata = {
@@ -37,10 +36,7 @@ export default async function PaypalPage() {
 
       {saldoResult.ok && pagosResult.ok ? (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <BalanceCard
-            saldo={calcularSaldoAcumulado(saldoResult.saldo, cliente.incentivoActivo)}
-            ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null}
-          />
+          <BalanceCard saldo={saldoResult.saldo} ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null} />
           <BenefitCard incentivo={cliente.incentivoActivo} />
         </div>
       ) : (
