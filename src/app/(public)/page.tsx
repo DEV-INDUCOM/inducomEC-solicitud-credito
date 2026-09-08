@@ -17,9 +17,10 @@ export default function LandingPage() {
   return (
     <>
       <Hero />
+      <VideoShowcase />
       <ValueCards />
       {/* Video corporativo: va entre las tarjetas de valor y el proceso de acceso */}
-      <VideoShowcase />
+      
       <AccessProcess />
       <ManagementFeature />
       <FaqSection />
