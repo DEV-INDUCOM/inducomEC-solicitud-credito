@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Hero } from "@/components/sections/landing/Hero";
 import { ValueCards } from "@/components/sections/landing/ValueCards";
+import { VideoShowcase } from "@/components/sections/landing/VideoShowcase";
 import { AccessProcess } from "@/components/sections/landing/AccessProcess";
 import { ManagementFeature } from "@/components/sections/landing/ManagementFeature";
 import { FaqSection } from "@/components/sections/landing/FaqSection";
@@ -17,6 +18,8 @@ export default function LandingPage() {
     <>
       <Hero />
       <ValueCards />
+      {/* Video corporativo: va entre las tarjetas de valor y el proceso de acceso */}
+      <VideoShowcase />
       <AccessProcess />
       <ManagementFeature />
       <FaqSection />
