@@ -14,7 +14,7 @@ import { Reveal } from "@/components/ui/Reveal";
 
 // ID del video de YouTube = lo que va después de "v=" en la URL.
 // Para cambiar el video, reemplace solo esta línea.
-const YOUTUBE_ID = "oDb4Po9ELUc";
+const YOUTUBE_ID = "l5OA8eXdfqQ";
 
 // Portada oficial del video en YouTube: se actualiza sola si cambian la
 // miniatura en YouTube. maxresdefault existe solo si el video se subió en HD;
