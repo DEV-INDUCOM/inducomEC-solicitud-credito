@@ -26,10 +26,10 @@ const steps = [
 
 export function AccessProcess() {
   return (
-    <section className="bg-[var(--bg-page)] py-28" id="proceso">
+    <section className="bg-[var(--bg-page)] py-20" id="proceso">
       <div className="page-container">
         <Reveal className="mb-16 text-center">
-          <h2 className="text-3xl">Proceso de acceso al portal</h2>
+          <h2 className="text-4xl">Proceso de acceso al portal</h2>
           <span className="mx-auto mt-3 block h-[3px] w-14 rounded-full bg-[var(--accent)]" aria-hidden="true" />
         </Reveal>
 

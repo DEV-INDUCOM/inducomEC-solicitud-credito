@@ -50,17 +50,17 @@ export function VideoShowcase() {
   const [isPlaying, setIsPlaying] = useState(false);
 
   return (
-    <section className="bg-[var(--bg-page-soft)] py-28" id="video">
+    <section className="bg-[var(--bg-page)] py-28" id="video">
       <div className="page-container">
         <Reveal className="text-center">
           <Badge className="mb-4">
             <IconPlayerPlayFilled size={12} aria-hidden="true" />
             Video corporativo
           </Badge>
-          <h2 className="mx-auto max-w-[24ch] text-3xl text-[var(--text-primary)]">
+          <h2 className="mx-auto max-w-[24ch] text-4xl text-[var(--text-primary)]">
             Descubra cómo impulsamos la gestión industrial de su empresa
           </h2>
-          <p className="mx-auto mt-3 max-w-[62ch] text-[var(--text-muted)]">
+          <p className="mx-auto mt-3 max-w-[62ch] text-[var(--text-secondary)]">
             Un recorrido rápido por las funcionalidades exclusivas, gestión de líneas de crédito B2B
             y soporte técnico especializado para la industria.
           </p>

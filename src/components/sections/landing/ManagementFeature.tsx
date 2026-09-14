@@ -18,13 +18,17 @@ const items = [
 
 export function ManagementFeature() {
   return (
-    <section className="bg-[var(--bg-medium)] py-28" id="beneficios">
+    // Fondo navy (antes gris, --bg-medium-dark): es la única sección "producto" entre
+    // el hero y el footer, así que rompe el bloque de 6 secciones claras seguidas.
+    // py-32 (antes py-28): un poco más de aire por ser el momento de detención de la página.
+    <section className="bg-[var(--bg-dark)] py-32" id="beneficios">
       <div className="page-container grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-center gap-12 max-[900px]:grid-cols-1">
         <Reveal>
-          <p className="text-xs font-semibold tracking-[0.06em] text-brand-orange-600 uppercase">
+          {/* orange-400 en vez de orange-600: sobre navy necesita el tono más claro para contraste */}
+          <p className="text-xs font-semibold tracking-[0.06em] text-brand-orange-400 uppercase">
             Gestión centralizada
           </p>
-          <h2 className="mt-3 max-w-[20ch] text-3xl">
+          <h2 className="mt-3 max-w-[20ch] text-4xl text-[var(--text-on-dark)]">
             Optimice su gestión comercial con herramientas digitales
           </h2>
 
@@ -33,8 +37,8 @@ export function ManagementFeature() {
               <li key={item.title} className="flex gap-3">
                 <IconCircleCheck size={20} className="mt-0.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
                 <div>
-                  <p className="font-semibold">{item.title}</p>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)] leading-normal">
+                  <p className="font-semibold text-[var(--text-on-dark)]">{item.title}</p>
+                  <p className="mt-1 text-sm text-slate-300 leading-normal">
                     {item.description}
                   </p>
                 </div>
@@ -44,6 +48,7 @@ export function ManagementFeature() {
         </Reveal>
 
         <Reveal delayMs={150}>
+          {/* Mockup del portal: pendiente reemplazar por un screenshot real (fuera de este cambio) */}
           <div
             role="img"
             aria-label="Vista previa del portal de clientes"

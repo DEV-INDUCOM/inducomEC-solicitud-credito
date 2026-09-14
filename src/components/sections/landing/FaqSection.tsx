@@ -44,9 +44,9 @@ export function FaqSection() {
     <section className="bg-[var(--bg-page)] py-28" id="faq">
       <div className="page-container">
         <Reveal className="mb-10 text-center">
-          <h2 className="text-3xl text-[var(--text-primary)]">Preguntas Frecuentes</h2>
+          <h2 className="text-4xl text-[var(--text-primary)]">Preguntas Frecuentes</h2>
 
-          <p className="mt-3 text-[var(--text-muted)]">
+          <p className="mt-3 text-[var(--text-secondary)]">
             Todo lo que necesita saber sobre el proceso de acreditación y acceso.
           </p>
         </Reveal>

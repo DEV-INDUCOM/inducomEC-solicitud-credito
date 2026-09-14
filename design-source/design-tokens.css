@@ -64,6 +64,7 @@
   --slate-50:  #F8FAFC;
   --slate-100: #f5f7fa;
   --slate-200: #F2F4F6;
+  --slate-250: #efeff0;
   --slate-300: #CBD5E1;
   --slate-400: #94A3B8;
   --slate-500: #64748B;
@@ -115,6 +116,7 @@
   --bg-surface:     var(--white);
   --bg-surface-alt: var(--slate-100);
   --bg-medium:      var(--slate-200);
+  --bg-medium-dark: var(--slate-250);
   --bg-dark:        var(--brand-navy-600);
   --bg-dark-deep:   var(--brand-navy-900);
 
