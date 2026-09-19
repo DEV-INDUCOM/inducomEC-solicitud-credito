@@ -5,9 +5,8 @@ import { BackLink } from "@/components/ui/BackLink";
 import { Card, IconTile } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { PagosTable } from "@/components/admin/PagosTable";
-import { IncentivoSelector } from "@/components/admin/IncentivoSelector";
 import { formatMonto } from "@/lib/admin/format";
-import { incentivoLabel, tipoClienteLabel } from "@/lib/admin/labels";
+import { tipoClienteLabel } from "@/lib/admin/labels";
 import { getClienteDetalle } from "@/lib/admin/queries";
 import { routes } from "@/lib/config/site";
 
@@ -33,11 +32,6 @@ export default async function AdminEmpresaDetallePage({ params }: { params: Prom
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl text-[var(--text-on-dark)] capitalize">{cliente.nombre}</h1>
               {!cliente.activo && <StatusBadge tone="neutral">Archivado</StatusBadge>}
-              {cliente.incentivoActivo ? (
-                <StatusBadge tone="success">{incentivoLabel[cliente.incentivoActivo]}</StatusBadge>
-              ) : (
-                <StatusBadge tone="neutral">Sin incentivo</StatusBadge>
-              )}
             </div>
             <p className="mt-2 font-mono text-sm text-slate-300">
               {tipoClienteLabel[cliente.tipoCliente]} · {cliente.identificacion}
@@ -80,13 +74,6 @@ export default async function AdminEmpresaDetallePage({ params }: { params: Prom
                 </div>
               </li>
             </ul>
-          </Card>
-
-          <Card shadow className="flex flex-col gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
-              Incentivo
-            </p>
-            <IncentivoSelector clienteId={cliente.id} incentivoActual={cliente.incentivoActivo} />
           </Card>
 
           <Card className="flex flex-col gap-3">

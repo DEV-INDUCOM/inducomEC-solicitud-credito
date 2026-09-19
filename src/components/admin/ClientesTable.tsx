@@ -4,7 +4,7 @@ import { IconTile } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatFecha, formatMonto } from "@/lib/admin/format";
-import { incentivoLabel, tipoClienteLabel } from "@/lib/admin/labels";
+import { tipoClienteLabel } from "@/lib/admin/labels";
 import { routes } from "@/lib/config/site";
 import { EditarClienteModal } from "@/components/admin/EditarClienteModal";
 import type { AdminClienteListItem } from "@/lib/admin/types";
@@ -45,7 +45,6 @@ export function ClientesTable({
               <th className="whitespace-nowrap px-8 py-3 font-medium">Estado</th>
               <th className="whitespace-nowrap px-8 py-3 font-medium">País</th>
               <th className="whitespace-nowrap px-8 py-3 font-medium">Usuarios</th>
-              <th className="whitespace-nowrap px-8 py-3 font-medium">Incentivo activo</th>
               <th className="whitespace-nowrap px-8 py-3 text-right font-medium">Total pagos</th>
               <th className="whitespace-nowrap px-8 py-3 text-right font-medium">Cashback acum.</th>
               <th className="whitespace-nowrap px-8 py-3 font-medium">Último pago</th>
@@ -70,18 +69,11 @@ export function ClientesTable({
                 </td>
                 <td className="whitespace-nowrap px-8 py-3 text-[var(--text-secondary)]">{item.pais ?? "—"}</td>
                 <td className="whitespace-nowrap px-8 py-3 text-[var(--text-secondary)]">{item.usuarios}</td>
-                <td className="whitespace-nowrap px-8 py-3">
-                  {item.incentivoActivo ? (
-                    <StatusBadge tone="success">{incentivoLabel[item.incentivoActivo]}</StatusBadge>
-                  ) : (
-                    <StatusBadge tone="neutral">Sin incentivo</StatusBadge>
-                  )}
-                </td>
                 <td className="whitespace-nowrap px-8 py-3 text-right font-mono tabular-nums text-[var(--text-primary)]">
                   {formatMonto(item.totalPagos)}
                 </td>
                 <td className="whitespace-nowrap px-8 py-3 text-right font-mono tabular-nums text-[var(--state-success-text)]">
-                  {item.cashbackAcumulado !== null ? formatMonto(item.cashbackAcumulado) : "—"}
+                  {formatMonto(item.cashbackAcumulado)}
                 </td>
                 <td className="whitespace-nowrap px-8 py-3 text-[var(--text-secondary)]">
                   {item.ultimoPago ? formatFecha(item.ultimoPago) : "—"}
@@ -113,11 +105,6 @@ export function ClientesTable({
               </Link>
               <div className="flex flex-wrap justify-end gap-1.5">
                 {!item.activo && <StatusBadge tone="neutral">Archivado</StatusBadge>}
-                {item.incentivoActivo ? (
-                  <StatusBadge tone="success">{incentivoLabel[item.incentivoActivo]}</StatusBadge>
-                ) : (
-                  <StatusBadge tone="neutral">Sin incentivo</StatusBadge>
-                )}
               </div>
             </div>
             <p className="mt-1 text-xs text-[var(--text-muted)]">

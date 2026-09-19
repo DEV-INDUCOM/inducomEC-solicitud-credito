@@ -6,14 +6,11 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Pagination } from "@/components/admin/Pagination";
 import { ClientesTable } from "@/components/admin/ClientesTable";
 import { formatMonto } from "@/lib/admin/format";
-import { incentivoLabel, tipoClienteLabel } from "@/lib/admin/labels";
+import { tipoClienteLabel } from "@/lib/admin/labels";
 import { getClientes, getPaises, getTotalAcumuladoGlobal, PAGE_SIZE, type ClientesFiltros } from "@/lib/admin/queries";
 import { routes } from "@/lib/config/site";
-import type { IncentivoTipo } from "@/lib/admin/types";
 
 export const metadata: Metadata = { title: "Empresas" };
-
-const INCENTIVOS: IncentivoTipo[] = ["cashback_1", "garantia_extendida", "despacho_rapido"];
 
 export default async function AdminEmpresasPage({
   searchParams,
@@ -26,7 +23,6 @@ export default async function AdminEmpresasPage({
   const filtros: ClientesFiltros = {
     q: sp.q,
     paisId: sp.pais ? Number(sp.pais) : undefined,
-    incentivo: (sp.incentivo as IncentivoTipo | "sin_incentivo") || undefined,
     tipoCliente: (sp.tipo as "natural" | "juridica") || undefined,
     estado: (sp.estado as "activos" | "archivados" | "todos") || undefined,
   };
@@ -68,23 +64,6 @@ export default async function AdminEmpresasPage({
               {paises.map((pais) => (
                 <option key={pais.id} value={pais.id}>
                   {pais.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-[var(--text-primary)]">Incentivo</span>
-            <select
-              name="incentivo"
-              defaultValue={sp.incentivo ?? ""}
-              className="h-11 rounded border border-[color:var(--border-strong)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--text-primary)]"
-            >
-              <option value="">Cualquier incentivo</option>
-              <option value="sin_incentivo">Sin incentivo</option>
-              {INCENTIVOS.map((incentivo) => (
-                <option key={incentivo} value={incentivo}>
-                  {incentivoLabel[incentivo]}
                 </option>
               ))}
             </select>

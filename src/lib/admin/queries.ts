@@ -12,7 +12,6 @@ import type {
   AdminSolicitudDetalle,
   AdminSolicitudListItem,
   EstadoSolicitud,
-  IncentivoTipo,
   MetodoPago,
   OrigenPago,
 } from "./types";
@@ -320,7 +319,6 @@ export async function getSolicitudDetalle(
 export interface ClientesFiltros {
   q?: string;
   paisId?: number;
-  incentivo?: IncentivoTipo | "sin_incentivo";
   tipoCliente?: "natural" | "juridica";
   /** Sin especificar = solo activos, para que los archivados no ensucien la
    *  vista por defecto (siguen existiendo, solo no estorban). */
@@ -341,8 +339,6 @@ export async function getClientes(
 
   if (filtros.q) query = query.or(`nombre_visible.ilike.%${filtros.q}%,identificacion.ilike.%${filtros.q}%`);
   if (filtros.tipoCliente) query = query.eq("tipo_cliente", filtros.tipoCliente);
-  if (filtros.incentivo === "sin_incentivo") query = query.is("incentivo_tipo", null);
-  else if (filtros.incentivo) query = query.eq("incentivo_tipo", filtros.incentivo);
   if (filtros.estado === "archivados") query = query.eq("activo", false);
   else if (filtros.estado !== "todos") query = query.eq("activo", true);
 
@@ -371,9 +367,9 @@ export async function getClientes(
       activo: row.activo,
       pais: row.pais_nombre,
       usuarios: Number(row.usuarios),
-      incentivoActivo: (row.incentivo_tipo as IncentivoTipo | null) ?? null,
       totalPagos: Number(row.total_pagos),
-      cashbackAcumulado: row.incentivo_tipo === "cashback_1" ? Number(row.total_pagos) * 0.01 : null,
+      // El 1% aplica a todos los clientes, ya no depende de un incentivo asignado.
+      cashbackAcumulado: Number(row.total_pagos) * 0.01,
       ultimoPago: row.ultimo_pago,
     })),
   };
@@ -395,7 +391,7 @@ export async function getClienteDetalle(id: string): Promise<{ ok: true; data: A
     .maybeSingle();
   if (error || !cliente) return { ok: false };
 
-  const [{ data: perfiles }, { data: pagos }, { data: incentivo }, { data: saldo }] = await Promise.all([
+  const [{ data: perfiles }, { data: pagos }, { data: saldo }] = await Promise.all([
     supabase.from("perfiles").select("id, email").eq("cliente_id", id),
     supabase
       .from("pagos")
@@ -404,7 +400,6 @@ export async function getClienteDetalle(id: string): Promise<{ ok: true; data: A
       )
       .eq("cliente_id", id)
       .order("fecha", { ascending: false }),
-    supabase.from("incentivos_cliente").select("tipo").eq("cliente_id", id).maybeSingle(),
     supabase.from("saldo_por_cliente").select("saldo").eq("cliente_id", id).maybeSingle(),
   ]);
 
@@ -421,7 +416,6 @@ export async function getClienteDetalle(id: string): Promise<{ ok: true; data: A
       activo: cliente.activo,
       pais: pais ?? null,
       email: cliente.email,
-      incentivoActivo: (incentivo?.tipo as IncentivoTipo | null) ?? null,
       usuarios: perfiles ?? [],
       pagos: (pagos ?? []).map((p) => ({
         id: p.id,
@@ -521,13 +515,11 @@ export async function getPagosStats(desde?: string, hasta?: string): Promise<{ o
   const { data, error } = await query;
   if (error || !data) return { ok: false };
 
-  const { data: incentivos } = await supabase.from("incentivos_cliente").select("cliente_id, tipo").eq("tipo", "cashback_1");
-  const clientesCashback = new Set((incentivos ?? []).map((i) => i.cliente_id));
-
+  // El cashback del 1% es universal: aplica a TODOS los pagos. Antes se
+  // filtraba por los clientes con el incentivo `cashback_1` asignado, lo que
+  // ahora subestimaría el total.
   const totalPeriodo = data.reduce((acc, p) => acc + Number(p.monto_pagado), 0);
-  const cashbackGenerado = data
-    .filter((p) => clientesCashback.has(p.cliente_id))
-    .reduce((acc, p) => acc + Number(p.monto_pagado) * 0.01, 0);
+  const cashbackGenerado = totalPeriodo * 0.01;
 
   return {
     ok: true,

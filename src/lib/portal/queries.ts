@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { IncentivoTipo, PortalContext, PortalPago } from "./types";
+import type { PortalContext, PortalPago } from "./types";
 
 export type PortalContextResult =
   | { ok: true; data: PortalContext }
@@ -56,14 +56,9 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
 
   const pais = Array.isArray(cliente.paises) ? cliente.paises[0]?.nombre : cliente.paises?.nombre;
 
-  // Sin fila en incentivos_cliente = sin incentivo asignado (no es un error).
-  const { data: incentivo, error: incentivoError } = await supabase
-    .from("incentivos_cliente")
-    .select("tipo")
-    .eq("cliente_id", cliente.id)
-    .maybeSingle();
-  if (incentivoError) return { ok: false, reason: "error" };
-
+  // Ya no se consulta `incentivos_cliente`: el cashback del 1% es universal
+  // (lo aplica la vista saldo_por_cliente) y no hay incentivos asignables.
+  // La tabla sigue existiendo en la base, solo dejó de usarse.
   return {
     ok: true,
     data: {
@@ -72,7 +67,6 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
         id: cliente.id,
         nombre: cliente.nombre_visible,
         pais: pais ?? null,
-        incentivoActivo: (incentivo?.tipo as IncentivoTipo | null) ?? null,
       },
     },
   };
@@ -80,9 +74,9 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
 
 /**
  * El "saldo" que ve el cliente es siempre el cashback (1% de lo pagado),
- * no el monto bruto — decisión de negocio confirmada: ya no depende de si
- * tiene el incentivo cashback_1 asignado. `saldo_cashback` lo calcula la
- * vista `saldo_por_cliente` (ver 20260829000000_saldo_por_cliente_cashback.sql).
+ * no el monto bruto: el 1% se da a todos los clientes por defecto.
+ * `saldo_cashback` lo calcula la vista `saldo_por_cliente`
+ * (ver 20260829000000_saldo_por_cliente_cashback.sql).
  */
 export async function getSaldo(clienteId: string): Promise<{ ok: true; saldo: number } | { ok: false }> {
   const supabase = await createSupabaseServerClient();

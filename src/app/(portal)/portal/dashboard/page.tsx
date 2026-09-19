@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Card, IconTile } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+
 import { BalanceCard } from "@/components/portal/BalanceCard";
-import { BenefitCard } from "@/components/portal/BenefitCard";
 import { CompanySummary } from "@/components/portal/CompanySummary";
 import { PaymentHistory } from "@/components/portal/PaymentHistory";
 import { StatCard } from "@/components/portal/StatCard";
@@ -30,12 +30,13 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl">Bienvenido, {cliente.nombre}</h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Consulta tu saldo, el historial de pagos y el incentivo activo de tu cuenta.
+          Consulta tu saldo y el historial de pagos de tu cuenta.
         </p>
       </div>
 
+      {/* md:grid-cols-2 (antes 3): quedaron dos tarjetas al quitar la de incentivo. */}
       {saldoResult.ok && pagosResult.ok ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <BalanceCard saldo={saldoResult.saldo} ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null} />
           <StatCard
             label="Pagos registrados"
@@ -46,7 +47,6 @@ export default async function DashboardPage() {
                 : "Sin pagos aún"
             }
           />
-          <BenefitCard incentivo={cliente.incentivoActivo} />
         </div>
       ) : (
         <ErrorState title="No pudimos cargar tu saldo ni tus pagos" />

@@ -1,10 +1,7 @@
-export type IncentivoTipo = "cashback_1" | "garantia_extendida";
-
 export interface PortalCliente {
   id: string;
   nombre: string;
   pais: string | null;
-  incentivoActivo: IncentivoTipo | null;
 }
 
 export interface PortalPerfil {

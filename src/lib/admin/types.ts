@@ -12,7 +12,6 @@ export type OrigenPago = "manual" | "csv" | "paypal";
 
 export type MetodoPago = "transferencia" | "tarjeta" | "efectivo" | "cheque" | "ventanilla" | "otro" | "paypal";
 
-export type IncentivoTipo = "cashback_1" | "garantia_extendida" | "despacho_rapido";
 
 export interface AdminSolicitudListItem {
   id: string;
@@ -70,9 +69,9 @@ export interface AdminClienteListItem {
   activo: boolean;
   pais: string | null;
   usuarios: number;
-  incentivoActivo: IncentivoTipo | null;
   totalPagos: number;
-  cashbackAcumulado: number | null;
+  /** 1% de totalPagos. Universal: todos los clientes lo tienen. */
+  cashbackAcumulado: number;
   ultimoPago: string | null;
 }
 
@@ -84,7 +83,6 @@ export interface AdminClienteDetalle {
   activo: boolean;
   pais: string | null;
   email: string;
-  incentivoActivo: IncentivoTipo | null;
   usuarios: { id: string; email: string }[];
   pagos: AdminPago[];
   saldo: number;

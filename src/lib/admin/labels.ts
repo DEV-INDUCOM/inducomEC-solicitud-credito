@@ -1,5 +1,5 @@
 import type { StatusTone } from "@/components/ui/StatusBadge";
-import type { EstadoSolicitud, IncentivoTipo, MetodoPago, OrigenPago } from "./types";
+import type { EstadoSolicitud, MetodoPago, OrigenPago } from "./types";
 
 export const estadoSolicitudLabel: Record<EstadoSolicitud, string> = {
   recibido: "Recibido",
@@ -27,12 +27,6 @@ export const estadoCodigoTone: Record<"activo" | "usado" | "vencido", StatusTone
   activo: "success",
   usado: "info",
   vencido: "danger",
-};
-
-export const incentivoLabel: Record<IncentivoTipo, string> = {
-  cashback_1: "Cashback 1%",
-  garantia_extendida: "Garantía extendida",
-  despacho_rapido: "Despacho rápido",
 };
 
 export const metodoPagoLabel: Record<MetodoPago, string> = {

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Alert } from "@/components/ui/Alert";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { BalanceCard } from "@/components/portal/BalanceCard";
-import { BenefitCard } from "@/components/portal/BenefitCard";
-import { IncentiveComparison } from "@/components/portal/ComparisonCard";
 import { PaymentHistory } from "@/components/portal/PaymentHistory";
 import { getPagos, getPortalContext, getSaldo } from "@/lib/portal/queries";
 
@@ -25,7 +23,7 @@ export default async function PaypalPage() {
       <div>
         <h1 className="text-3xl">Módulo PayPal</h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Saldo derivado de pagos, historial e incentivo activo de {cliente.nombre}.
+          Saldo e historial de pagos de {cliente.nombre}.
         </p>
       </div>
 
@@ -35,12 +33,13 @@ export default async function PaypalPage() {
       </Alert>
 
       {saldoResult.ok && pagosResult.ok ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        // Una sola tarjeta desde que se quitó el incentivo: se acota el ancho
+        // para que no quede un bloque gigante estirado a todo el contenedor.
+        <div className="max-w-md">
           <BalanceCard saldo={saldoResult.saldo} ultimaActualizacion={pagosResult.pagos[0]?.creadoEn ?? null} />
-          <BenefitCard incentivo={cliente.incentivoActivo} />
         </div>
       ) : (
-        <ErrorState title="No pudimos cargar tu saldo ni tu incentivo" />
+        <ErrorState title="No pudimos cargar tu saldo" />
       )}
 
       <section className="flex flex-col gap-4">
@@ -50,15 +49,6 @@ export default async function PaypalPage() {
         ) : (
           <ErrorState title="No pudimos cargar tu historial de pagos" />
         )}
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Comparador de incentivos</h2>
-        <p className="text-sm text-[var(--text-secondary)] leading-normal">
-          Estos son los beneficios disponibles para clientes INDUCOM. El resaltado en acero muestra el que
-          está activo actualmente para tu cuenta.
-        </p>
-        <IncentiveComparison activo={cliente.incentivoActivo} />
       </section>
     </div>
   );

@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ADMIN_AUTH_COOKIE_NAME } from "@/lib/supabase/cookie-config";
 import { routes } from "@/lib/config/site";
 import { serverEnv } from "@/lib/config/env.server";
-import type { EstadoSolicitud, IncentivoTipo, MetodoPago, OrigenPago, TipoCliente } from "./types";
+import type { EstadoSolicitud, MetodoPago, OrigenPago, TipoCliente } from "./types";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -309,29 +309,6 @@ export async function actualizarCliente(input: ActualizarClienteInput): Promise<
 
   revalidatePath(routes.adminEmpresas);
   revalidatePath(`${routes.adminEmpresas}/${input.clienteId}`);
-  revalidatePath(routes.adminResumen);
-  return { ok: true };
-}
-
-/**
- * Asigna, cambia o quita el incentivo de un cliente. `incentivos_cliente`
- * tiene `cliente_id` como primary key (un incentivo activo por cliente), así
- * que "cambiar" es upsert y "quitar" es borrar la fila — no hay estado
- * intermedio ambiguo. Las policies de RLS ("personal interno asigna/actualiza
- * incentivos", ver 20260717000000_panel_admin.sql) ya cubren esto directo,
- * sin necesitar un RPC dedicado.
- */
-export async function asignarIncentivo(clienteId: string, tipo: IncentivoTipo | null): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient({ cookieName: ADMIN_AUTH_COOKIE_NAME });
-
-  const { error } = tipo
-    ? await supabase.from("incentivos_cliente").upsert({ cliente_id: clienteId, tipo }, { onConflict: "cliente_id" })
-    : await supabase.from("incentivos_cliente").delete().eq("cliente_id", clienteId);
-
-  if (error) return { ok: false, message: GENERIC_ERROR };
-
-  revalidatePath(`${routes.adminEmpresas}/${clienteId}`);
-  revalidatePath(routes.adminEmpresas);
   revalidatePath(routes.adminResumen);
   return { ok: true };
 }
