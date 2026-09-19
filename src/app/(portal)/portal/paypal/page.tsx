@@ -28,8 +28,7 @@ export default async function PaypalPage() {
       </div>
 
       <Alert variant="info" title="El saldo no es en tiempo real">
-        Los pagos con PayPal se registran automáticamente al confirmarse. Los demás se
-        actualizan cuando INDUCOM los carga de forma manual o por CSV.
+        Los pagos con PayPal se registran automáticamente al confirmarse. 
       </Alert>
 
       {saldoResult.ok && pagosResult.ok ? (
