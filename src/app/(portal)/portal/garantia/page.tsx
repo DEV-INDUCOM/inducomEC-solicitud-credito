@@ -33,6 +33,10 @@ export default async function GarantiaPage() {
 
   const { ciclo, compras, garantias, pendienteDeAviso, desplazadaPorAviso } = resultado.resumen;
   const garantiasDelCiclo = garantias.filter((garantia) => garantia.cicloId === ciclo.id);
+  // v2: activas = extensión corriendo hoy; pasadas = vencida o reemplazada
+  // (la garantía de fábrica de esas cotizaciones puede seguir vigente).
+  const garantiasActivas = garantias.filter((garantia) => garantia.vigente);
+  const garantiasPasadas = garantias.filter((garantia) => !garantia.vigente);
 
   return (
     <div className="flex flex-col gap-8">
@@ -67,16 +71,34 @@ export default async function GarantiaPage() {
         <GarantiaComprasCiclo compras={compras} />
       </section>
 
+      {/* Incluyen ciclos anteriores a propósito: el acumulado se reinicia,
+       *  las garantías no (guía funcional, sección 14). */}
       <section className="flex flex-col gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Garantías obtenidas</h2>
-          {/* Incluye ciclos anteriores a propósito: el acumulado se reinicia,
-           *  las garantías no (guía funcional, sección 14). */}
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Garantías activas</h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Historial completo de beneficios desbloqueados, incluidos los de ciclos anteriores.
+            Cotizaciones con meses adicionales de garantía vigentes hoy.
           </p>
         </div>
-        <GarantiasObtenidas garantias={garantias} />
+        <GarantiasObtenidas
+          garantias={garantiasActivas}
+          vacioTitulo="Aún no tienes garantías activas"
+          vacioDescripcion="Cuando alcances USD 5.000 o USD 10.000, la cotización que complete el umbral aparecerá aquí con el detalle de la garantía asignada."
+        />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]">Garantías pasadas</h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Cotizaciones cuya extensión ya venció o fue reemplazada por un beneficio más reciente.
+          </p>
+        </div>
+        <GarantiasObtenidas
+          garantias={garantiasPasadas}
+          vacioTitulo="No tienes garantías pasadas"
+          vacioDescripcion="Aquí verás las cotizaciones cuya extensión de garantía haya terminado."
+        />
       </section>
 
       {pendienteDeAviso && (

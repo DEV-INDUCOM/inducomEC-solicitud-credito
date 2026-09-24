@@ -16,7 +16,17 @@ function estadoVisible(garantia: PortalGarantia): { tone: StatusTone; label: str
   return { tone: "success", label: "Vigente" };
 }
 
-export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] }) {
+/** Lista de garantías. La página la usa dos veces (activas / pasadas), así
+ *  que el estado vacío llega por props. */
+export function GarantiasObtenidas({
+  garantias,
+  vacioTitulo,
+  vacioDescripcion,
+}: {
+  garantias: PortalGarantia[];
+  vacioTitulo: string;
+  vacioDescripcion: string;
+}) {
   if (garantias.length === 0) {
     return (
       <EmptyState
@@ -25,8 +35,8 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
             <IconFileDescription size={20} stroke={1.75} />
           </IconTile>
         }
-        title="Aún no has desbloqueado beneficios"
-        description="Cuando alcances USD 5.000 o USD 10.000, la cotización que complete el umbral aparecerá aquí con el detalle de la garantía asignada."
+        title={vacioTitulo}
+        description={vacioDescripcion}
       />
     );
   }
@@ -42,7 +52,7 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
             <Card className="flex flex-col gap-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-base font-semibold text-[var(--text-primary)]">
+                  <p className="font-display text-base font-semibold tabular-nums text-[var(--text-primary)]">
                     {garantia.cotizacionNumero ?? "Cotización sin número"}
                   </p>
                   <p className="text-sm text-[var(--text-secondary)]">
@@ -108,7 +118,7 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
                     href={garantia.cotizacionUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[var(--action-primary)] hover:text-[var(--link-hover)]"
+                    className="inline-flex items-center gap-1 font-semibold text-[var(--link)] hover:text-[var(--link-hover)]"
                   >
                     Ver cotización
                     <IconExternalLink size={14} stroke={1.75} aria-hidden />

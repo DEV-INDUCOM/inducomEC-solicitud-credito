@@ -158,6 +158,13 @@ Pista `--bg-medium` (`#F2F4F6`), relleno `--highlight` (azul `#1F5BD8`), altura 
 ### Gráfica de actividad
 Línea `--highlight` de 2.5px con área al 8% de opacidad, puntos rellenos con anillo blanco, 4 líneas guía tenues (`--border`, la base en `--border-strong`) y eje Y con valores redondos (`6.000`, no `5.933`). Selector de periodo (3/6/12 meses) arriba a la derecha de la tarjeta; el total y las transacciones mostradas corresponden a ese periodo. Meses con año ("abr 2026"); con 12 meses, el año solo en el primero y en enero.
 
+### Módulo de garantía extendida
+- **Tarjeta del ciclo:** dos columnas en desktop (apiladas en móvil). Izquierda: eyebrow "Ciclo N", **anillo de progreso** en `--highlight` sobre pista `--bg-medium` (porcentaje en Sora al centro), acumulado en Sora y nota `--state-info-*` con el faltante. Derecha: título, barra con hitos de USD 5.000 y 10.000 (marca de posición actual en `--highlight` con anillo `--highlight-soft`), etiquetas con meses y badge por hito, y dos notas de reglas en `--bg-surface-alt`.
+- El anillo es el indicador accesible (`role="progressbar"`); la barra lineal repite el dato y va `aria-hidden`.
+- **Tarjetas de beneficio:** ícono de escudo (`accent` si está desbloqueado, `neutral` si no), título "+N meses de garantía", condición de liberación y una **barra de estado, no un botón**: neutra con candado ("Bloqueado · faltan $X", con el faltante real de ese umbral) o de éxito con la cotización asignada.
+- **Garantías activas / pasadas** en secciones separadas: activas = extensión vigente hoy; pasadas = vencida o reemplazada.
+- Los textos describen solo las reglas reales del programa (`beneficios.ts`): no prometer coberturas, visitas ni servicios que el sistema no otorga.
+
 ### Saldo y pagos (PayPal / cashback)
 - Tablas: header en `--bg-surface-alt`, filas con borde inferior `--border`, montos alineados a la derecha con `tabular-nums`.
 - El saldo se carga **manual o por CSV**, no en tiempo real. El diseño debe **decir la verdad**: mostrar siempre "Saldo actualizado al [fecha de última carga]" o, si no hay datos, "Aún no se ha registrado ningún pago". Nunca insinuar tiempo real.
