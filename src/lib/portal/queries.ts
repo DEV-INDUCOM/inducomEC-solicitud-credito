@@ -1,7 +1,15 @@
 import "server-only";
 import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { PortalContext, PortalPago } from "./types";
+import { CASHBACK_MINIMO_CANJE } from "./beneficios";
+import type {
+  PortalCashback,
+  PortalCompraCiclo,
+  PortalContext,
+  PortalGarantia,
+  PortalGarantiaResumen,
+  PortalPago,
+} from "./types";
 
 export type PortalContextResult =
   | { ok: true; data: PortalContext }
@@ -73,20 +81,33 @@ export const getPortalContext = cache(async (): Promise<PortalContextResult> => 
 });
 
 /**
- * El "saldo" que ve el cliente es siempre el cashback (1% de lo pagado),
- * no el monto bruto: el 1% se da a todos los clientes por defecto.
- * `saldo_cashback` lo calcula la vista `saldo_por_cliente`
- * (ver 20260829000000_saldo_por_cliente_cashback.sql).
+ * El "saldo" que ve el cliente es siempre el cashback (1% de lo pagado por
+ * PayPal) menos lo que ya canjeó. Todo lo calcula la vista
+ * `saldo_por_cliente` (ver 20260923000000_beneficios_cashback_garantia.sql);
+ * acá solo se deriva el faltante para llegar al mínimo de canje.
  */
-export async function getSaldo(clienteId: string): Promise<{ ok: true; saldo: number } | { ok: false }> {
+export async function getCashback(
+  clienteId: string
+): Promise<{ ok: true; cashback: PortalCashback } | { ok: false }> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("saldo_por_cliente")
-    .select("saldo_cashback")
+    .select("saldo_cashback, cashback_redimido, cashback_disponible")
     .eq("cliente_id", clienteId)
     .maybeSingle();
   if (error) return { ok: false };
-  return { ok: true, saldo: Number(data?.saldo_cashback ?? 0) };
+
+  const disponible = Number(data?.cashback_disponible ?? 0);
+  return {
+    ok: true,
+    cashback: {
+      acumulado: Number(data?.saldo_cashback ?? 0),
+      redimido: Number(data?.cashback_redimido ?? 0),
+      disponible,
+      faltanteParaCanje: Math.max(CASHBACK_MINIMO_CANJE - disponible, 0),
+      puedeCanjear: disponible >= CASHBACK_MINIMO_CANJE,
+    },
+  };
 }
 
 export async function getPagos(
@@ -121,5 +142,159 @@ export async function getPagos(
       montoCotizado: pago.monto_cotizado === null ? null : Number(pago.monto_cotizado),
       cotizacionUrl: pago.cotizacion_url,
     })),
+  };
+}
+
+/** Fila cruda de `garantias_extendidas` con el número de ciclo embebido.
+ *  El cliente de Supabase no está tipado con un schema generado, así que los
+ *  embeds se tipan a mano (mismo criterio que `paises(nombre)` más arriba). */
+interface GarantiaRow {
+  id: string;
+  ciclo_id: string;
+  umbral: number;
+  cotizacion_numero: string | null;
+  deal_nombre: string | null;
+  cotizacion_url: string | null;
+  monto_pago: number;
+  acumulado_alcanzado: number;
+  meses_fabrica: number;
+  meses_extension: number;
+  meses_totales: number;
+  fecha_inicio: string;
+  fecha_fin_fabrica: string;
+  fecha_fin_total: string;
+  estado: "activa" | "revocada_por_limite";
+  vista_en: string | null;
+  desplazada_por: string | null;
+  ciclos_garantia: { numero: number } | { numero: number }[] | null;
+}
+
+function mapGarantia(row: GarantiaRow, hoy: string): PortalGarantia {
+  const ciclo = Array.isArray(row.ciclos_garantia) ? row.ciclos_garantia[0] : row.ciclos_garantia;
+  return {
+    id: row.id,
+    cicloId: row.ciclo_id,
+    cicloNumero: ciclo?.numero ?? null,
+    umbral: Number(row.umbral),
+    cotizacionNumero: row.cotizacion_numero,
+    dealNombre: row.deal_nombre,
+    cotizacionUrl: row.cotizacion_url,
+    montoPago: Number(row.monto_pago),
+    acumuladoAlcanzado: Number(row.acumulado_alcanzado),
+    mesesFabrica: row.meses_fabrica,
+    mesesExtension: row.meses_extension,
+    mesesTotales: row.meses_totales,
+    fechaInicio: row.fecha_inicio,
+    fechaFinFabrica: row.fecha_fin_fabrica,
+    fechaFinTotal: row.fecha_fin_total,
+    estado: row.estado,
+    // La expiración no se guarda en la base (sería un job diario): se compara
+    // la fecha de fin con hoy, en formato YYYY-MM-DD para que ordene bien.
+    vigente: row.estado === "activa" && row.fecha_fin_total >= hoy,
+    vistaEn: row.vista_en,
+  };
+}
+
+/**
+ * Ciclo actual + compras que acumularon en él + historial de garantías.
+ * Va todo junto porque la pantalla de garantía necesita las tres cosas y
+ * salen de tres consultas que no dependen entre sí.
+ *
+ * Un cliente sin pagos PayPal todavía no tiene fila en `ciclos_garantia`
+ * (el ciclo se crea con el primer pago): en ese caso se devuelve un ciclo 1
+ * en cero, que es exactamente lo que hay que mostrar.
+ */
+export async function getGarantiaResumen(
+  clienteId: string
+): Promise<{ ok: true; resumen: PortalGarantiaResumen } | { ok: false }> {
+  const supabase = await createSupabaseServerClient();
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const [cicloRes, garantiasRes] = await Promise.all([
+    supabase
+      .from("ciclos_garantia")
+      .select("id, numero, acumulado, umbral_5k_pago_id, umbral_10k_pago_id")
+      .eq("cliente_id", clienteId)
+      .eq("estado", "abierto")
+      .maybeSingle(),
+    supabase
+      .from("garantias_extendidas")
+      .select(
+        "id, ciclo_id, umbral, cotizacion_numero, deal_nombre, cotizacion_url, monto_pago, acumulado_alcanzado, meses_fabrica, meses_extension, meses_totales, fecha_inicio, fecha_fin_fabrica, fecha_fin_total, estado, vista_en, desplazada_por, ciclos_garantia(numero)"
+      )
+      .eq("cliente_id", clienteId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (cicloRes.error || garantiasRes.error) return { ok: false };
+
+  const cicloRow = cicloRes.data as {
+    id: string;
+    numero: number;
+    acumulado: number;
+    umbral_5k_pago_id: string | null;
+    umbral_10k_pago_id: string | null;
+  } | null;
+
+  const ciclo = {
+    id: cicloRow?.id ?? "",
+    numero: cicloRow?.numero ?? 1,
+    acumulado: Number(cicloRow?.acumulado ?? 0),
+    umbral5kDesbloqueado: cicloRow?.umbral_5k_pago_id != null,
+    umbral10kDesbloqueado: cicloRow?.umbral_10k_pago_id != null,
+  };
+
+  let compras: PortalCompraCiclo[] = [];
+  if (cicloRow) {
+    const { data, error } = await supabase
+      .from("pagos_ciclo_garantia")
+      .select("pago_id, monto, acumulado_despues, pagos(fecha, cotizacion_numero, deal_nombre)")
+      .eq("ciclo_id", cicloRow.id)
+      .order("acumulado_despues", { ascending: false });
+    if (error) return { ok: false };
+
+    compras = (data ?? []).map((fila) => {
+      const row = fila as unknown as {
+        pago_id: string;
+        monto: number;
+        acumulado_despues: number;
+        pagos:
+          | { fecha: string; cotizacion_numero: string | null; deal_nombre: string | null }
+          | { fecha: string; cotizacion_numero: string | null; deal_nombre: string | null }[]
+          | null;
+      };
+      const pago = Array.isArray(row.pagos) ? row.pagos[0] : row.pagos;
+      return {
+        pagoId: row.pago_id,
+        fecha: pago?.fecha ?? "",
+        monto: Number(row.monto),
+        acumuladoDespues: Number(row.acumulado_despues),
+        cotizacionNumero: pago?.cotizacion_numero ?? null,
+        dealNombre: pago?.deal_nombre ?? null,
+      };
+    });
+  }
+
+  const filas = (garantiasRes.data ?? []) as unknown as GarantiaRow[];
+  const garantias = filas.map((fila) => mapGarantia(fila, hoy));
+
+  // El modal se muestra una sola vez: la garantía más reciente sin `vista_en`.
+  const filaPendiente = filas.find((fila) => fila.vista_en === null) ?? null;
+  const pendienteDeAviso = filaPendiente ? mapGarantia(filaPendiente, hoy) : null;
+  // Si esa garantía desplazó a otra (regla del máximo de 2), el mismo modal
+  // tiene que avisarlo: el cliente no puede enterarse en silencio.
+  const filaDesplazada = filaPendiente
+    ? filas.find((fila) => fila.desplazada_por === filaPendiente.id) ?? null
+    : null;
+
+  return {
+    ok: true,
+    resumen: {
+      ciclo,
+      compras,
+      garantias,
+      pendienteDeAviso,
+      desplazadaPorAviso: filaDesplazada ? mapGarantia(filaDesplazada, hoy) : null,
+    },
   };
 }

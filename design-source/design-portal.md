@@ -1,41 +1,58 @@
 # Guía de Diseño — Portal privado · Portal de Clientes INDUCOM
 
-> **Fuente de verdad de los valores:** `design-tokens.css`. Este documento describe *cómo* el portal usa esos tokens; no redefine colores, tamaños ni espaciados.
+> **Fuente de verdad de los valores:** `design-tokens.css`. Este documento describe *cómo* el portal usa esos tokens; no redefine colores, tamaños ni espaciados. Los HEX que aparecen aquí son solo referencia (resueltos a partir de los tokens); si difieren, manda `design-tokens.css`.
 >
-> **Superficie:** las rutas `/portal/*`, privadas, detrás de login. **No** aplicar `data-surface="landing"` aquí: en el portal la acción primaria es acero, no rojo.
+> **Superficie:** `data-surface="portal"`. La aplican los layouts de `/portal/*` **y** de `/admin/*`: el panel administrativo comparte este mismo sistema, así que todo cambio aquí afecta a ambos. Las pantallas de acceso (`/portal/login`, registro, recuperar/actualizar contraseña y `/admin/login`) **no** son esta superficie: viven en el grupo `(auth)` con `data-surface="landing"` (ver sección 6, "Pantallas de acceso").
 
 ---
 
 ## 1. Qué es esta superficie
 
-Todo el portal autenticado: dashboard, módulo de pagos PayPal (saldo cargado manual/CSV), solicitudes del cliente y los módulos futuros marcados como "próximamente". Es una **herramienta de trabajo**, no una vitrina.
+Todo el portal autenticado: dashboard, módulo PayPal (saldo cargado manual/CSV + cashback), garantía extendida y los módulos futuros marcados como "próximamente" (facturas y pagos, cotizaciones). Es una **herramienta de trabajo**, no una vitrina.
 
 ## 2. Principio rector
 
-**El portal opera, no vende.** El usuario entra a consultar su saldo, ver el estado de su crédito y trabajar con sus datos, posiblemente todos los días. Por eso el criterio es la **claridad sostenida**, no el impacto. Tres reglas de estilo que gobiernan todo lo demás:
+**El portal opera, no vende.** El usuario entra a consultar su saldo, su cashback y el estado de su garantía, posiblemente todos los días. Por eso el criterio es la **claridad sostenida**, no el impacto. Tres reglas de estilo que gobiernan todo lo demás:
 
-1. **Acero dominante, rojo contenido.** El acción primaria, la navegación y los encabezados usan `--ink`. El rojo (`--accent`) es un realce puntual, no el color de fondo del producto.
-2. **El rojo de marca NO es el rojo de error.** Uno de los estados reales es `rechazado`, que debe leerse como rojo. Si el botón primario también fuera rojo, se confundiría "acción de marca" con "algo salió mal". Los estados de error viven siempre como **badges de fondo tenue** (`--state-danger-bg` + `--state-danger-text`), nunca como bloques rojos sólidos. Así jamás compiten con un CTA.
-3. **La UI no es la seguridad.** El aislamiento entre empresas lo hace la base de datos (RLS), no la pantalla. Ocultar un botón no protege nada. Ver la sección 10.
+1. **Navy dominante, naranja contenido.** La acción primaria, la navegación y los textos principales usan navy (`--action-primary` `#00005B`, `--text-primary` `#000027`). El naranja (`--accent` `#EE6B03`) es un realce puntual —ítem activo de la nav, íconos de logro, anillo de foco—, no el color de los botones ni del fondo del producto.
+2. **El rojo no es marca; es solo error.** El rojo se reserva para `rechazado`, `vencido` y errores, y siempre como **badge de fondo tenue** (`--state-danger-bg` `#FDECEC` + `--state-danger-text` `#8A1F1F`), nunca como bloque sólido. Del mismo modo, el naranja de marca **no** comunica "atención": el estado de advertencia usa su propio ámbar tenue (`--state-warning-*`). Así un realce de marca nunca se confunde con un estado.
+3. **La UI no es la seguridad.** El aislamiento entre clientes lo hace la base de datos (RLS), no la pantalla. Ocultar un botón no protege nada. Ver la sección 10.
 
 ## 3. Color
 
-### Roles
+### Paleta resuelta en la superficie portal
 
-| Uso | Token |
-|---|---|
-| Botón primario, nav activa, encabezados | `--action-primary` (acero) / `--action-primary-hover` |
-| Realces de marca, ícono de logo, detalles | `--accent` (rojo), con moderación |
-| Enlaces en texto | `--link` / `--link-hover` |
-| Fondo de página | `--bg-page` |
-| Superficie de tarjetas y tablas | `--bg-surface` (blanco) |
-| Superficie alterna (filas zebra, headers de tabla) | `--bg-surface-alt` |
-| Texto principal / secundario / tenue | `--text-primary` / `--text-secondary` / `--text-muted` |
-| Bordes | `--border` / `--border-strong` |
+| Rol | Token | HEX |
+|---|---|---|
+| Fondo de página | `--bg-page` (override de la superficie → `--slate-50`) | `#F8FAFC` |
+| Superficie de tarjetas y tablas | `--bg-surface` | `#FFFFFF` |
+| Superficie alterna (bloques internos, headers de tabla, hover) | `--bg-surface-alt` | `#F5F7FA` |
+| Fondo suave (estados vacíos) | `--bg-page-soft` | `#F8FAFC` |
+| Pista de barras de progreso | `--bg-medium` | `#F2F4F6` |
+| Botón primario / hover / pressed | `--action-primary` / `-hover` / `-pressed` | `#00005B` / `#00004A` / `#000039` |
+| Acento de marca | `--accent` / `--accent-hover` | `#EE6B03` / `#C95502` |
+| Acento suave (fondo de ícono destacado) | `--accent-soft` | `#FFF4E8` |
+| Sidebar / navegación privada | `--brand-navy-900` | `#000027` |
+| Texto principal | `--text-primary` | `#000027` |
+| Texto secundario | `--text-secondary` | `#475569` |
+| Texto tenue | `--text-muted` | `#94A3B8` |
+| Texto sobre fondo oscuro | `--text-on-dark` | `#FFFFFF` |
+| Enlaces / hover | `--link` / `--link-hover` | `#00005B` / `#EE6B03` |
+| Bordes / borde fuerte | `--border` / `--border-strong` | `#F2F4F6` / `#CBD5E1` |
+
+Regla: los componentes consumen **roles** (`--action-primary`, `--text-primary`, `--bg-surface`…), no `--brand-*` directo, salvo excepciones puntuales ya existentes (sidebar en `brand-navy-900`, `IconTile`).
 
 ### Sistema de estados (núcleo del portal)
 
-Los estados salen directo del spec de negocio. Cada uno es un **badge tipo pill**: fondo tenue + texto oscuro de la misma familia + (opcional) borde. Nunca sólido saturado.
+Cada estado es un **badge tipo pill**: fondo tenue + texto oscuro de la misma familia + borde. Nunca sólido saturado.
+
+| Tono | Fondo | Texto | Borde |
+|---|---|---|---|
+| `info` | `#EAF2FF` | `#0B3B75` | `#B8D4FF` |
+| `warning` | `#FFF7E0` | `#7A4A00` | `#F7D37A` |
+| `success` | `#EAF7E8` | `#1F5F2A` | `#BFE4BD` |
+| `danger` | `#FDECEC` | `#8A1F1F` | `#F5B8B8` |
+| `neutral` | `#F3F4F6` | `#4B5563` | `#D1D5DB` |
 
 **Solicitud de crédito** — `recibido → en revisión → aprobado | rechazado | pendiente de información`
 
@@ -55,111 +72,141 @@ Los estados salen directo del spec de negocio. Cada uno es un **badge tipo pill*
 | `usado` | `--state-neutral-*` |
 | `vencido` | `--state-danger-*` |
 
-**Módulos futuros:** badge `--state-neutral-*` con **borde punteado** y etiqueta "próximamente".
+**Beneficios (cashback / garantía)**
 
-Regla: un estado = un color en todo el sistema. `rechazado` (solicitud) y `vencido` (código) comparten el rojo tenue porque ambos son "terminó mal / no válido"; eso es intencional y consistente.
+| Estado | Tokens |
+|---|---|
+| Cashback disponible para canje / beneficio desbloqueado | `--state-success-*` |
+| Cashback acumulado (aún bajo el mínimo) | `--state-neutral-*` |
+
+**Módulos futuros:** badge `--state-neutral-*` (o, dentro de la nav oscura, su versión translúcida con **borde punteado**) y etiqueta "próximamente".
+
+Regla: un estado = un color en todo el sistema. `rechazado` (solicitud) y `vencido` (código) comparten el rojo tenue porque ambos son "terminó mal / no válido"; eso es intencional y consistente. El verde queda reservado para estados de éxito/desbloqueo: por eso las barras de progreso se rellenan en navy, no en verde.
 
 ## 4. Tipografía
 
-- **Título de página:** `--font-display` (Sora) `--weight-semibold`, `--text-2xl`. Es el único lugar del portal donde Sora aparece de forma habitual; el resto es Inter para no romper la densidad.
-- **Cuerpo, formularios, tablas, navegación, botones:** `--font-sans` (Inter). Cuerpo `--text-base` (16px) con `--leading-normal`; labels y texto secundario `--text-sm` (14px).
-- **Códigos de invitación, IDs, montos, referencias:** `--font-mono` (JetBrains Mono). Decisión funcional: evita confundir `0/O` y `1/l` cuando el cliente teclea un código, y alinea columnas de números.
-- Pesos: el portal vive en `--weight-regular` (400) y `--weight-medium` (500). Reservar `--weight-semibold` (600) para el título de página. Evitar pesos altos en UI densa: se ven pesados.
+- **Encabezados (`h1`–`h6`):** `--font-display` (Sora) `--weight-semibold` (600), `--leading-tight`, color `--text-primary`. Viene de los estilos base de `globals.css`; no hace falta repetirlo en cada componente.
+- **Título de página (`h1`):** `--text-3xl` (30px), seguido de un subtítulo en `--text-secondary` (`#475569`) con `mt-2`. Ej.: "Bienvenido, {cliente}" / "Este es el estado general de tu cuenta."
+- **Título de tarjeta o bloque:** Sora, `--text-lg`/`--text-xl`; en estados como "próximamente", `--text-2xl`.
+- **Cuerpo, formularios, tablas, navegación, botones:** `--font-sans` (Inter). Cuerpo `--text-base` (16px) con `--leading-normal`; labels y texto secundario `--text-sm` (14px), peso `--weight-medium` en labels.
+- **Etiquetas de métrica ("eyebrow"):** `--font-mono` (JetBrains Mono), `--text-xs` (12px), `--weight-semibold`, MAYÚSCULAS, tracking `0.06em`, color `--text-secondary`. Ej.: "CASHBACK ACUMULADO".
+- **Montos, códigos de invitación, IDs, referencias, porcentajes:** `--font-mono` con `tabular-nums`, peso `--weight-medium`. Decisión funcional: evita confundir `0/O` y `1/l` cuando el cliente teclea un código, y alinea columnas de números.
+- Pesos: la UI densa vive en 400 y 500; 600 queda para encabezados, eyebrows y badges. No usar 700 en el portal.
 
-Sentence case siempre. Sin punto final en labels y encabezados de UI.
+Sentence case en títulos y labels; MAYÚSCULAS solo en eyebrows, badges y "próximamente". Sin punto final en labels y encabezados de UI.
 
 ### Montos y números
 
-- Usar `--font-mono` o `font-variant-numeric: tabular-nums` para que las columnas de dinero alineen.
-- Formatear con `Intl.NumberFormat`. INDUCOM opera en EC/BO/PE/CO (todos con USD o su propia moneda y convenciones distintas de separador). No hardcodear el formato: usar el locale correspondiente (por defecto `es-EC`). Ejemplo de referencia: `$ 12.480,00`.
+- `--font-mono` + `tabular-nums` para que las columnas de dinero alineen.
+- Formatear con `Intl.NumberFormat` (helpers en `src/lib/portal/format.ts`). INDUCOM opera en EC/BO/PE/CO; el locale de referencia es `es-EC` con moneda USD. Ejemplo: `$ 12.480,00`. Fechas con `dateStyle: "medium"`.
 - Redondear todo número que llegue a pantalla; nunca mostrar artefactos de coma flotante.
 
 ## 5. Espaciado y densidad
 
-- El portal es más compacto que la landing, pero no apretado. Padding de tarjeta `--space-4`/`--space-5`; separación entre bloques `--space-6`/`--space-8`.
-- Tablas cómodas: alto de fila legible, padding de celda `--space-3`, header en `--bg-surface-alt`.
-- Ancho de contenido del área de trabajo con máximo legible (~1200px) y padding lateral `--space-6`.
+- **Shell:** sidebar fijo de 256px (`w-64`) + topbar de 88px; solo el `<main>` hace scroll. Contenido con máximo de ~1200px (`--container-max`) y padding lateral `--space-6` (24px); padding vertical `--space-8`/`--space-10`.
+- **Entre bloques de página:** `--space-8` (32px). **Entre tarjetas de una grilla:** `--space-5` (20px).
+- **Tarjeta:** padding `--card-padding` (`--space-6`, 24px); separación interna `--space-4` (16px). Bloques internos destacados (ej. "Te faltan $X") en `--bg-surface-alt` con padding `--space-4`.
+- **Tablas:** alto de fila legible, padding de celda `--space-3`, header en `--bg-surface-alt`.
 
 ## 6. Componentes
 
 ### Navegación privada
-Barra lateral o superior con fondo `--ink-900`/`--ink-800`, texto `--text-on-dark`, ítem activo marcado con `--accent` (barra o punto rojo) o con contraste de fondo. Identidad clara de "estás dentro del portal".
+- **Sidebar** (desktop): fondo `--brand-navy-900` (`#000027`), logo INDUCOM en blanco arriba.
+- **Ítems:** Inter `--text-sm` medium, ícono Tabler 18px. Inactivo: blanco al 70% con hover blanco al 5% de fondo. **Activo:** fondo blanco al 10%, texto blanco y **barra vertical naranja** (`--accent` `#EE6B03`, 4×20px) a la izquierda.
+- **Módulo futuro:** ítem no clicable (`aria-disabled`), blanco al 40%, con pill "PRÓXIMAMENTE" de borde punteado translúcido.
+- **Topbar:** fondo `--bg-surface` blanco con borde inferior `--border`; muestra el nombre del cliente (`--text-secondary`) y el botón de cerrar sesión.
+- **Móvil:** el sidebar se reemplaza por un drawer con el mismo fondo navy, que se abre desde el botón de menú del topbar y se cierra con Escape.
 
 ### Botones
-- **Primario:** fondo `--action-primary` (acero), texto blanco, `--radius`. Uno por vista.
-- **Secundario:** contorno `--border-strong` sobre `--bg-surface`, texto `--text-primary`.
-- **Peligro** (eliminar, acciones destructivas): contorno o texto `--state-danger-text`; sólido rojo solo tras confirmación explícita.
-- **Ghost:** sin borde, hover `--bg-surface-alt`.
-- Todos con `:focus-visible` usando `--focus-ring` (los de peligro, `--focus-ring-danger`).
+- **Primario (`primary`):** fondo `--action-primary` (`#00005B`), texto blanco, hover `#00004A`, pressed `#000039`, `--radius` (8px). Uno por vista.
+- **Contorno (`outline`):** borde `--border-strong` sobre `--bg-surface`, texto `--text-primary`; en hover, borde y texto pasan a navy.
+- **Ghost:** sin borde ni fondo; en hover el texto pasa a `--link-hover` (naranja).
+- **Sobre fondo oscuro (`outlineOnDark`):** borde `--border-on-dark`, texto blanco.
+- **Peligro** (eliminar, acciones destructivas): contorno o texto `--state-danger-text`; sólido rojo solo tras confirmación explícita. Aún no existe como variante: si se necesita, se agrega a `Button.tsx`.
+- Alturas: `sm` 36px, `md` 44px, `lg` 52px (`--button-height-*`). Deshabilitado al 60% de opacidad.
+- Todos con `:focus-visible` usando `--focus-ring` (naranja al 35%); los de peligro, `--focus-ring-danger`.
 
-### Formularios (incluida la solicitud de crédito)
-La solicitud recoge **datos sensibles** (identificación, ingresos, documentos). El diseño debe reflejar seriedad y cuidado:
-- Inputs con label visible arriba (no solo placeholder), `--radius`, borde `--border`, foco con `--focus-ring`.
-- Estados de campo: normal, foco, error (borde `--state-danger-border`, mensaje en `--state-danger-text` debajo), deshabilitado (`--slate-100`).
-- **Casilla de consentimiento explícito** antes de enviar (finalidad y retención de datos). No es opcional: es requisito legal (LOPDP en Ecuador y equivalentes en BO/PE/CO). Enlazar a la política de privacidad.
-- La **validación que importa ocurre en el servidor.** La validación en el navegador es solo ayuda de UX; el diseño no debe dar a entender que basta.
-- Estados de envío: idle, enviando (spinner, botón deshabilitado brevemente), éxito (confirmación clara), error (mensaje reintentable, sin exponer detalles internos).
+### Tarjetas
+- `Card`: `--bg-surface`, borde `--border`, `--radius-lg` (12px), padding 24px. Sombra `--shadow-md` solo en la tarjeta protagonista de la vista (ej. cashback).
+- **Tarjeta de métrica / saldo:** eyebrow mono en mayúsculas arriba (ver sección 4), valor en mono `tabular-nums` (`--text-xl` en métricas secundarias, `--text-4xl` en el saldo protagonista), pista opcional en `--text-sm` `--text-secondary`.
+- Junto a cualquier saldo, la nota de "última actualización" (ver "Saldo y pagos").
+
+### Íconos en tile (`IconTile`)
+Contenedor de 48px, cuadrado (`--radius`) o circular:
+- `neutral`: fondo `--bg-surface-alt`, ícono navy `#00005B`. Es el caso por defecto.
+- `accent`: fondo `--accent-soft` (`#FFF4E8`), ícono `#C95502`. Solo para destacar un logro (beneficio desbloqueado, modal de garantía obtenida).
+- `onDark`: fondo `--brand-navy-800` (`#000039`), ícono blanco; para paneles navy.
+
+### Barras de progreso
+Pista `--bg-medium` (`#F2F4F6`), relleno `--action-primary` (navy), altura 8px, pill. Porcentaje visible aparte en mono. No usar verde (reservado para estados de éxito).
+
+### Saldo y pagos (PayPal / cashback)
+- Tablas: header en `--bg-surface-alt`, filas con borde inferior `--border`, montos alineados a la derecha con `tabular-nums`.
+- El saldo se carga **manual o por CSV**, no en tiempo real. El diseño debe **decir la verdad**: mostrar siempre "Saldo actualizado al [fecha de última carga]" o, si no hay datos, "Aún no se ha registrado ningún pago". Nunca insinuar tiempo real.
+- Cashback y garantía son beneficios independientes: la tarjeta de cashback no enlaza a garantía.
+
+### Formularios
+Los formularios (incluida la solicitud de crédito) recogen **datos sensibles**. El diseño debe reflejar seriedad:
+- Label visible arriba (Inter `--text-sm` medium), no solo placeholder; input de 44px (`--input-height`), `--radius`, borde `--border`, foco con `--focus-ring`.
+- Estados de campo: normal, foco, error (borde `--state-danger-border`, mensaje en `--state-danger-text` debajo), deshabilitado (`--slate-100` `#F5F7FA`).
+- **Casilla de consentimiento explícito** antes de enviar (finalidad y retención de datos). Requisito legal (LOPDP en Ecuador y equivalentes en BO/PE/CO). Enlazar a la política de privacidad.
+- La **validación que importa ocurre en el servidor**; la del navegador es solo ayuda de UX.
+- Estados de envío: idle, enviando (botón deshabilitado con "Procesando…"), éxito (confirmación clara), error (mensaje reintentable, sin exponer detalles internos).
 
 ### Carga de adjuntos
-- Zona de carga con límite de **tamaño y tipos permitidos** visibles antes de subir. Rechazar en cliente como cortesía, pero el servidor decide.
+- Límite de **tamaño y tipos permitidos** visibles antes de subir. Rechazar en cliente como cortesía; el servidor decide.
 - Mostrar archivos cargados con nombre, tamaño y opción de quitar. Los adjuntos van a almacenamiento **privado**; nunca mostrar una URL pública permanente.
 
-### Tablas (pagos / saldo PayPal)
-- Header en `--bg-surface-alt`, filas con borde inferior `--border`. Montos alineados a la derecha con tabular-nums.
-- El módulo PayPal se carga **manual o por CSV**, no en tiempo real. El diseño debe **decir la verdad**: mostrar de forma visible "Saldo actualizado al [fecha de última carga]". Nunca insinuar tiempo real.
-
-### Tarjetas de métrica / saldo
-- Etiqueta `--text-sm` `--text-muted` arriba, número grande `--text-2xl` `--weight-medium` abajo, fondo `--bg-surface-alt` o tarjeta blanca con borde.
-- Junto al saldo, la nota de "última actualización" (ver arriba).
-
 ### Badges de estado
-Pill (`--radius-full`), fondo + texto del par `--state-*`, ícono Tabler opcional a la izquierda. Ver tabla de la sección 3.
+Pill (`--radius-full`), borde + fondo + texto del par `--state-*`, `--text-xs` semibold en MAYÚSCULAS con tracking `0.04em`, ícono Tabler opcional a la izquierda. Ver tablas de la sección 3.
 
 ### Estados vacíos
-Cada lista/tabla necesita un estado vacío claro, no un error:
-- **Cliente sin pagos aún:** ícono neutro + "Aún no hay pagos registrados" + una línea que explique que el saldo se actualiza cuando INDUCOM carga la información. Nada de pantalla en blanco ni error rojo.
-- Solicitudes vacías, adjuntos vacíos, etc.: mismo patrón, tono informativo.
+Contenedor con borde punteado `--border-strong`, fondo `--bg-page-soft`, `--radius-lg`; ícono neutro + título (`--text-base` semibold) + una línea explicativa (`--text-sm` `--text-secondary`). Nunca pantalla en blanco ni error rojo.
+- **Cliente sin pagos aún:** "Aún no hay pagos registrados" + explicar que el saldo se actualiza cuando INDUCOM carga la información.
 
 ### Mensajes de error de acceso (códigos)
-Para **código vencido o ya usado**: mensaje **genérico** — "Código no válido" — sin revelar en qué falló. No decir "ya usado" vs "vencido": eso facilita fuerza bruta. Mismo tratamiento para correo ya registrado: mensaje neutro y controlado.
+Para **código vencido o ya usado**: mensaje **genérico** — "Código no válido" — sin revelar en qué falló (facilita fuerza bruta). Mismo tratamiento para correo ya registrado.
 
 ### Sesión expirada
-Si la sesión caduca mientras el usuario navega, redirigir a login de forma limpia (idealmente conservando a dónde volver), sin cortar abruptamente ni mostrar un error crudo.
+Si la sesión caduca, redirigir a login de forma limpia (idealmente conservando a dónde volver), sin mostrar un error crudo.
 
 ### Módulos "próximamente"
-Facturas, garantías, cotizaciones, documentos, redención de saldo aparecen listados pero deshabilitados, con badge "próximamente". **Funcionalidad a medias no se muestra como un botón que falla.**
+Facturas y pagos y cotizaciones aparecen en la nav pero deshabilitados, con badge "próximamente"; la vista `ComingSoon` los presenta con badge neutro, título Sora y descripción. **Funcionalidad a medias no se muestra como un botón que falla.**
+
+### Pantallas de acceso (fuera de esta superficie)
+Login, registro y recuperación usan `AuthSplitLayout` bajo `data-surface="landing"` (botón primario naranja `#EE6B03`). El panel izquierdo es un degradado navy (`--brand-navy-700` → `--brand-navy-900`) en el portal y **negro** (`#0A0A0A` → `#000000`, `tone="black"`) en `/admin/login`, para distinguir el acceso interno del de clientes.
 
 ## 7. Iconografía
 
-Tabler outline, tamaño 16–20px inline, un solo estilo (nunca mezclar con filled). Íconos decorativos con `aria-hidden`; íconos-botón con `aria-label`.
+Tabler outline, `stroke` 1.75, tamaño 18px en navegación, 16–20px inline y 22px dentro de `IconTile`. Un solo estilo (nunca mezclar con filled). Íconos decorativos con `aria-hidden`; íconos-botón con `aria-label`.
 
 ## 8. Accesibilidad
 
 - Contraste AA mínimo en texto y componentes. Los pares `--state-*` están calculados para que el texto oscuro lea sobre su fondo tenue.
-- El color **nunca** es el único portador de significado: los estados llevan también etiqueta de texto (y opcionalmente ícono). Un usuario con daltonismo debe distinguir `aprobado` de `rechazado` por la palabra, no solo por el color.
-- Foco siempre visible (`--focus-ring`). Nunca `outline: none` sin reemplazo.
-- Labels asociados a cada input; errores anunciables por lector de pantalla.
+- El color **nunca** es el único portador de significado: los estados llevan también etiqueta de texto (y opcionalmente ícono).
+- Foco siempre visible (`--focus-ring`, naranja, visible tanto sobre blanco como sobre navy). Nunca `outline: none` sin reemplazo.
+- Labels asociados a cada input; errores anunciables por lector de pantalla. Barras de progreso con `role="progressbar"` y `aria-valuenow`.
 - Áreas táctiles cómodas (~44px) en controles interactivos.
 
 ## 9. Responsive / densidad
 
-- El portal se usa en desktop principalmente, pero debe ser utilizable en móvil (un cliente puede consultar su saldo desde el teléfono).
-- Tablas anchas: en pantallas chicas, permitir scroll horizontal en un contenedor o colapsar a formato de tarjeta por fila. No encoger el texto por debajo de 12px.
-- Navegación lateral colapsa a menú en móvil.
+- Uso principal en desktop, pero utilizable en móvil (un cliente puede consultar su saldo desde el teléfono).
+- Grillas de tarjetas: 1 columna en móvil, 2 desde `lg`.
+- Tablas anchas: scroll horizontal en un contenedor o formato de tarjeta por fila. No encoger el texto por debajo de 12px.
+- La navegación lateral colapsa a drawer en móvil (ver sección 6).
 
 ## 10. Reglas de seguridad que tocan la UI
 
-Estas no son solo de backend; condicionan el diseño:
-
 - **No confiar en el frontend para seguridad.** Ocultar un elemento no es protegerlo. El acceso real lo controla RLS en la base de datos.
-- **Cada usuario ve solo los datos de su empresa.** El diseño nunca debe asumir que "como no muestro el dato, está protegido". El aislamiento es de base de datos.
+- **Cada usuario ve solo los datos de su cliente/empresa.** El aislamiento es de base de datos, no de pantalla.
 - **No exponer URLs públicas** a documentos con datos personales; los adjuntos son de almacenamiento privado.
-- **Mensajes de error controlados y genéricos** en el flujo de acceso (códigos), para no filtrar información útil a un atacante.
+- **Mensajes de error controlados y genéricos** en el flujo de acceso (códigos).
 
 ## 11. Qué NO hacer
 
-- **No** usar el rojo de marca como color de fondo del producto ni como botón primario general (choca con `rechazado`).
-- **No** representar estados de error/rechazo como bloques rojos sólidos; usar badges tenues.
+- **No** usar el naranja como fondo del producto ni como botón primario del portal; es acento (su uso como CTA es propio de la landing).
+- **No** usar rojo como color de marca ni representar errores como bloques rojos sólidos; usar badges tenues.
+- **No** usar verde fuera de estados de éxito (ni en barras de progreso).
 - **No** prometer tiempo real en el saldo mientras la carga sea manual/CSV.
 - **No** mostrar funcionalidad a medias como un botón funcional; usar "próximamente".
 - **No** revelar en la UI por qué un código falló.
@@ -170,4 +217,4 @@ Estas no son solo de backend; condicionan el diseño:
 
 ## Resumen en una frase
 
-El portal se sostiene en **acero dominante con rojo contenido**, un **sistema de estados de fondo tenue** mapeado uno a uno al negocio, y la disciplina de **decir la verdad en la UI** (saldo no es tiempo real, errores genéricos, nada a medias) — todo apoyado en tokens compartidos con la landing pero aplicados con la sobriedad de una herramienta de trabajo.
+El portal se sostiene en **navy dominante con naranja contenido** sobre fondos claros, un **sistema de estados de fondo tenue** mapeado uno a uno al negocio (con el rojo reservado solo para errores), y la disciplina de **decir la verdad en la UI** (saldo no es tiempo real, errores genéricos, nada a medias) — todo apoyado en tokens compartidos con la landing, pero aplicados con la sobriedad de una herramienta de trabajo que también usa el panel administrativo.
