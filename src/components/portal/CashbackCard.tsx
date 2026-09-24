@@ -21,14 +21,14 @@ export function CashbackCard({
   return (
     <Card shadow className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
-        <IconTile variant="neutral" shape="circle">
+        <IconTile variant="highlight" shape="circle">
           <IconPigMoney size={22} stroke={1.75} />
         </IconTile>
         <div>
           <p className="font-mono text-xs font-semibold tracking-[0.06em] text-[var(--text-secondary)] uppercase">
             Cashback acumulado
           </p>
-          <p className="font-mono text-4xl font-medium tabular-nums text-[var(--text-primary)]">
+          <p className="font-display text-3xl font-semibold tabular-nums text-[var(--text-primary)]">
             {formatMonto(cashback.disponible)}
           </p>
         </div>
@@ -53,11 +53,11 @@ export function CashbackCard({
             <p className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
               <IconGift size={18} stroke={1.75} aria-hidden />
               Te faltan{" "}
-              <span className="font-mono font-semibold tabular-nums">
+              <span className="font-semibold tabular-nums">
                 {formatMonto(cashback.faltanteParaCanje)}
               </span>
             </p>
-            <span className="font-mono text-sm tabular-nums text-[var(--text-secondary)]">{progreso}%</span>
+            <span className="text-sm tabular-nums text-[var(--text-secondary)]">{progreso}%</span>
           </div>
         )}
 

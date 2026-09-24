@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IconPigMoney, IconShieldCheck } from "@tabler/icons-react";
+import { IconCircleCheck, IconPigMoney, IconShieldCheck } from "@tabler/icons-react";
 import { Card, IconTile } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 
@@ -7,7 +7,7 @@ import { ActividadPaypal } from "@/components/portal/ActividadPaypal";
 import { CompanySummary } from "@/components/portal/CompanySummary";
 import { ResumenBeneficioCard } from "@/components/portal/ResumenBeneficioCard";
 import { UltimosMovimientos } from "@/components/portal/UltimosMovimientos";
-import { formatMonto } from "@/lib/portal/format";
+import { formatFecha, formatMonto } from "@/lib/portal/format";
 import { portalNavItems } from "@/lib/portal/nav";
 import { getCashback, getGarantiaResumen, getPagos, getPortalContext } from "@/lib/portal/queries";
 import { routes } from "@/lib/config/site";
@@ -48,7 +48,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl">Bienvenido, {cliente.nombre}</h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Este es el estado general de tu cuenta.
+          Consulta el estado general de tu cuenta.
         </p>
       </div>
 
@@ -60,13 +60,15 @@ export default async function DashboardPage() {
             estado={
               cashbackResult.cashback.puedeCanjear
                 ? { tone: "success", label: "Disponible" }
-                : { tone: "neutral", label: "Acumulado" }
+                : { tone: "info", label: "Acumulado" }
             }
             valor={
-              <p className="font-mono text-4xl font-medium tabular-nums text-[var(--text-primary)]">
+              // v2: montos protagonistas en Sora (antes monoespaciada).
+              <p className="font-display text-3xl font-semibold tabular-nums text-[var(--text-primary)]">
                 {formatMonto(cashbackResult.cashback.disponible)}
               </p>
             }
+            detalle="Saldo disponible"
             ctaHref={routes.paypal}
             ctaLabel="Ver cashback"
           />
@@ -78,24 +80,49 @@ export default async function DashboardPage() {
           <ResumenBeneficioCard
             titulo="Garantía extendida"
             icono={<IconShieldCheck size={22} stroke={1.75} />}
+            // Naranja: la garantía es un logro, no una métrica.
+            iconoVariante="accent"
             estado={
               garantiasVigentes.length > 0
-                ? { tone: "success", label: "Activa" }
+                ? {
+                    tone: "success",
+                    label: `${garantiasVigentes.length} ${
+                      garantiasVigentes.length === 1 ? "beneficio activo" : "beneficios activos"
+                    }`,
+                  }
                 : { tone: "neutral", label: "Sin beneficios" }
             }
             valor={
-              <p className="text-2xl font-semibold text-[var(--text-primary)]">
-                {garantiasVigentes.length === 0
-                  ? "Sin beneficios desbloqueados"
-                  : `${garantiasVigentes.length} ${
-                      garantiasVigentes.length === 1 ? "beneficio activo" : "beneficios activos"
-                    }`}
+              // v2: se muestra el beneficio concreto, no solo el conteo.
+              <p className="font-display text-2xl font-semibold text-[var(--text-primary)]">
+                {ultimaGarantia
+                  ? `${ultimaGarantia.mesesTotales} meses de garantía`
+                  : "Sin beneficios desbloqueados"}
               </p>
             }
-            detalle={
-              ultimaGarantia
-                ? `Último beneficio: ${ultimaGarantia.mesesTotales} meses de garantía total`
-                : undefined
+            detalle={ultimaGarantia ? "Último beneficio obtenido" : undefined}
+            extra={
+              ultimaGarantia && (
+                <div className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[color:var(--state-success-border)] bg-[var(--state-success-bg)] p-3">
+                  <IconCircleCheck
+                    size={20}
+                    stroke={1.75}
+                    aria-hidden
+                    className="mt-0.5 shrink-0 text-[var(--state-success-text)]"
+                  />
+                  <div className="min-w-0">
+                    {/* fechaInicio es la fecha del pago que cruzó el umbral. */}
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      Obtenido el {formatFecha(ultimaGarantia.fechaInicio)}
+                    </p>
+                    {ultimaGarantia.cotizacionNumero && (
+                      <p className="truncate text-xs text-[var(--text-secondary)]">
+                        Aplica a la cotización {ultimaGarantia.cotizacionNumero}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
             }
             ctaHref={routes.garantia}
             ctaLabel="Ver garantías"
@@ -105,11 +132,13 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {pagosResult.ok && garantiaResult.ok ? (
+      {pagosResult.ok ? (
+        // Solo fecha y monto de pagos PayPal: es lo único que la gráfica
+        // (componente de cliente) necesita recibir en el navegador.
         <ActividadPaypal
-          pagos={pagosResult.pagos}
-          totalCiclo={garantiaResult.resumen.ciclo.acumulado}
-          transaccionesCiclo={garantiaResult.resumen.compras.length}
+          compras={pagosResult.pagos
+            .filter((pago) => pago.origen === "paypal")
+            .map((pago) => ({ fecha: pago.fecha, monto: pago.montoPagado }))}
         />
       ) : (
         <ErrorState title="No pudimos cargar tu actividad de PayPal" />

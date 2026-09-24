@@ -5,12 +5,14 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   shadow?: boolean;
 }
 
+/** Radio, borde y sombra salen de tokens --card-*: la landing conserva su
+ *  acabado (12px, borde, sin sombra) y la superficie portal aplica el v2. */
 export function Card({ shadow = false, className, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-[color:var(--border)] bg-[var(--bg-surface)] p-6",
-        shadow && "shadow-md",
+        "rounded-[var(--card-radius)] border border-[color:var(--card-border)] bg-[var(--bg-surface)] p-6",
+        shadow ? "shadow-[var(--card-shadow-raised)]" : "shadow-[var(--card-shadow)]",
         className
       )}
       {...props}
@@ -18,13 +20,15 @@ export function Card({ shadow = false, className, ...props }: CardProps) {
   );
 }
 
-export type IconTileVariant = "neutral" | "accent" | "onDark";
+export type IconTileVariant = "neutral" | "highlight" | "accent" | "onDark";
 export type IconTileShape = "square" | "circle";
 
 /** Cada variante fija bg + text completos — evita mezclar utilidades con
  *  nombre y arbitrarias para la misma propiedad (ver nota en Button.tsx). */
 const iconTileVariantClasses: Record<IconTileVariant, string> = {
   neutral: "bg-[var(--bg-surface-alt)] text-brand-navy-600",
+  // Métricas y datos (cashback, PayPal): azul de interfaz en el portal.
+  highlight: "bg-[var(--highlight-soft)] text-[var(--highlight)]",
   accent: "bg-[var(--accent-soft)] text-brand-orange-600",
   onDark: "bg-brand-navy-800 text-[var(--text-on-dark)]",
 };

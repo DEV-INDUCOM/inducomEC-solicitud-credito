@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils/cn";
 
-/** Barra de progreso simple. El relleno usa `--action-primary` (acero
- *  #00005B en el portal) y no verde: el verde queda reservado para los badges
- *  de estado "desbloqueado", igual que en el resto del sistema. */
+/** Barra de progreso simple. El relleno usa `--highlight` (azul #1F5BD8 en
+ *  el portal, navy #00005B fuera de él) y no verde: el verde queda reservado
+ *  para los badges de estado "desbloqueado", igual que en el resto del sistema. */
 export function ProgressBar({
   value,
   label,
@@ -26,7 +26,7 @@ export function ProgressBar({
       className={cn("h-2 w-full overflow-hidden rounded-full bg-[var(--bg-medium)]", className)}
     >
       <div
-        className="h-full rounded-full bg-[var(--action-primary)] transition-[width] duration-500"
+        className="h-full rounded-full bg-[var(--highlight)] transition-[width] duration-500"
         style={{ width: `${pct}%` }}
       />
     </div>

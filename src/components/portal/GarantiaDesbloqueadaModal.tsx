@@ -88,7 +88,7 @@ export function GarantiaDesbloqueadaModal({
                 <dd
                   className={
                     mono
-                      ? "text-right font-mono tabular-nums text-[var(--text-primary)]"
+                      ? "text-right font-medium tabular-nums text-[var(--text-primary)]"
                       : "text-right text-[var(--text-primary)]"
                   }
                 >
@@ -101,19 +101,19 @@ export function GarantiaDesbloqueadaModal({
 
         <div className="mt-4 grid grid-cols-3 gap-3 rounded-lg border border-[color:var(--border)] p-4 text-center">
           <div>
-            <p className="font-mono text-2xl font-medium tabular-nums text-[var(--text-primary)]">
+            <p className="font-display text-2xl font-semibold tabular-nums text-[var(--text-primary)]">
               {garantia.mesesFabrica}
             </p>
             <p className="text-xs text-[var(--text-secondary)]">meses de fábrica</p>
           </div>
           <div>
-            <p className="font-mono text-2xl font-medium tabular-nums text-[var(--state-success-text)]">
+            <p className="font-display text-2xl font-semibold tabular-nums text-[var(--state-success-text)]">
               +{garantia.mesesExtension}
             </p>
             <p className="text-xs text-[var(--text-secondary)]">meses de extensión</p>
           </div>
           <div className="rounded bg-[var(--state-info-bg)]">
-            <p className="font-mono text-2xl font-medium tabular-nums text-[var(--state-info-text)]">
+            <p className="font-display text-2xl font-semibold tabular-nums text-[var(--state-info-text)]">
               {garantia.mesesTotales}
             </p>
             <p className="text-xs text-[var(--state-info-text)]">garantía total</p>

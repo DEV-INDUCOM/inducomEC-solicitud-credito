@@ -40,7 +40,7 @@ export function GarantiaBeneficios({
 
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="font-mono text-base font-semibold tabular-nums text-[var(--text-primary)]">
+                  <p className="font-display text-base font-semibold tabular-nums text-[var(--text-primary)]">
                     {formatMonto(umbral)}
                   </p>
                   <StatusBadge tone={desbloqueado ? "success" : "neutral"}>

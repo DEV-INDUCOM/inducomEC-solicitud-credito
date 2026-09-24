@@ -47,7 +47,7 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
                   </p>
                   <p className="text-sm text-[var(--text-secondary)]">
                     {garantia.dealNombre ?? "—"} · Pago del {formatFecha(garantia.fechaInicio)} por{" "}
-                    <span className="font-mono tabular-nums">{formatMonto(garantia.montoPago)}</span>
+                    <span className="tabular-nums">{formatMonto(garantia.montoPago)}</span>
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -60,7 +60,7 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
                *  fábrica es del producto y nunca se pierde; la extensión sí. */}
               <div className="grid grid-cols-3 gap-3 rounded-lg bg-[var(--bg-surface-alt)] p-4 text-center">
                 <div>
-                  <p className="font-mono text-xl font-medium tabular-nums text-[var(--text-primary)]">
+                  <p className="font-display text-xl font-semibold tabular-nums text-[var(--text-primary)]">
                     {garantia.mesesFabrica}
                   </p>
                   <p className="text-xs text-[var(--text-secondary)]">meses de fábrica</p>
@@ -69,8 +69,8 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
                   <p
                     className={
                       extensionActiva
-                        ? "font-mono text-xl font-medium tabular-nums text-[var(--state-success-text)]"
-                        : "font-mono text-xl font-medium tabular-nums text-[var(--text-muted)] line-through"
+                        ? "font-display text-xl font-semibold tabular-nums text-[var(--state-success-text)]"
+                        : "font-display text-xl font-semibold tabular-nums text-[var(--text-muted)] line-through"
                     }
                   >
                     +{garantia.mesesExtension}
@@ -78,7 +78,7 @@ export function GarantiasObtenidas({ garantias }: { garantias: PortalGarantia[] 
                   <p className="text-xs text-[var(--text-secondary)]">meses de extensión</p>
                 </div>
                 <div>
-                  <p className="font-mono text-xl font-medium tabular-nums text-[var(--text-primary)]">
+                  <p className="font-display text-xl font-semibold tabular-nums text-[var(--text-primary)]">
                     {extensionActiva ? garantia.mesesTotales : garantia.mesesFabrica}
                   </p>
                   <p className="text-xs text-[var(--text-secondary)]">meses en total</p>

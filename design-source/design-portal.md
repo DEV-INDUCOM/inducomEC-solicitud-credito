@@ -4,6 +4,8 @@
 >
 > **Superficie:** `data-surface="portal"`. La aplican los layouts de `/portal/*` **y** de `/admin/*`: el panel administrativo comparte este mismo sistema, así que todo cambio aquí afecta a ambos. Las pantallas de acceso (`/portal/login`, registro, recuperar/actualizar contraseña y `/admin/login`) **no** son esta superficie: viven en el grupo `(auth)` con `data-surface="landing"` (ver sección 6, "Pantallas de acceso").
 
+> **Versión:** v2 minimalista. La estética anterior queda en el tag de git `portal-v1.1-garantia-cashback`.
+
 ---
 
 ## 1. Qué es esta superficie
@@ -14,7 +16,7 @@ Todo el portal autenticado: dashboard, módulo PayPal (saldo cargado manual/CSV 
 
 **El portal opera, no vende.** El usuario entra a consultar su saldo, su cashback y el estado de su garantía, posiblemente todos los días. Por eso el criterio es la **claridad sostenida**, no el impacto. Tres reglas de estilo que gobiernan todo lo demás:
 
-1. **Navy dominante, naranja contenido.** La acción primaria, la navegación y los textos principales usan navy (`--action-primary` `#00005B`, `--text-primary` `#000027`). El naranja (`--accent` `#EE6B03`) es un realce puntual —ítem activo de la nav, íconos de logro, anillo de foco—, no el color de los botones ni del fondo del producto.
+1. **Navy dominante, azul para datos, naranja contenido.** La acción primaria, la navegación y los textos principales usan navy (`--action-primary` `#00005B`, `--text-primary` `#000027`). El azul de interfaz (`--highlight` `#1F5BD8`) realza **datos**: íconos de métrica, enlaces, gráficos y barras de progreso. El naranja (`--accent` `#EE6B03`) es un realce puntual —ítem activo de la nav, íconos de logro, anillo de foco—, no el color de los botones ni del fondo del producto.
 2. **El rojo no es marca; es solo error.** El rojo se reserva para `rechazado`, `vencido` y errores, y siempre como **badge de fondo tenue** (`--state-danger-bg` `#FDECEC` + `--state-danger-text` `#8A1F1F`), nunca como bloque sólido. Del mismo modo, el naranja de marca **no** comunica "atención": el estado de advertencia usa su propio ámbar tenue (`--state-warning-*`). Así un realce de marca nunca se confunde con un estado.
 3. **La UI no es la seguridad.** El aislamiento entre clientes lo hace la base de datos (RLS), no la pantalla. Ocultar un botón no protege nada. Ver la sección 10.
 
@@ -24,12 +26,13 @@ Todo el portal autenticado: dashboard, módulo PayPal (saldo cargado manual/CSV 
 
 | Rol | Token | HEX |
 |---|---|---|
-| Fondo de página | `--bg-page` (override de la superficie → `--slate-50`) | `#F8FAFC` |
+| Fondo de página | `--bg-page` (override de la superficie → `--slate-cool-50`) | `#F4F6FA` |
 | Superficie de tarjetas y tablas | `--bg-surface` | `#FFFFFF` |
 | Superficie alterna (bloques internos, headers de tabla, hover) | `--bg-surface-alt` | `#F5F7FA` |
 | Fondo suave (estados vacíos) | `--bg-page-soft` | `#F8FAFC` |
 | Pista de barras de progreso | `--bg-medium` | `#F2F4F6` |
 | Botón primario / hover / pressed | `--action-primary` / `-hover` / `-pressed` | `#00005B` / `#00004A` / `#000039` |
+| Realce de datos (íconos de métrica, gráficos, progreso) | `--highlight` / `--highlight-soft` | `#1F5BD8` / `#EEF3FF` |
 | Acento de marca | `--accent` / `--accent-hover` | `#EE6B03` / `#C95502` |
 | Acento suave (fondo de ícono destacado) | `--accent-soft` | `#FFF4E8` |
 | Sidebar / navegación privada | `--brand-navy-900` | `#000027` |
@@ -37,8 +40,11 @@ Todo el portal autenticado: dashboard, módulo PayPal (saldo cargado manual/CSV 
 | Texto secundario | `--text-secondary` | `#475569` |
 | Texto tenue | `--text-muted` | `#94A3B8` |
 | Texto sobre fondo oscuro | `--text-on-dark` | `#FFFFFF` |
-| Enlaces / hover | `--link` / `--link-hover` | `#00005B` / `#EE6B03` |
+| Enlaces / hover | `--link` / `--link-hover` | `#1F5BD8` / `#1848B0` |
 | Bordes / borde fuerte | `--border` / `--border-strong` | `#F2F4F6` / `#CBD5E1` |
+| Tarjeta: radio / borde / sombra | `--card-radius` / `--card-border` / `--card-shadow` | 16px / `#EDF0F5` / sombra suave |
+
+El azul `--ui-blue-*` **no es color de marca**: es de interfaz y solo vive en roles del portal. Fuera de la superficie portal, `--highlight` vuelve a navy y las tarjetas a su acabado de landing (12px, borde, sin sombra).
 
 Regla: los componentes consumen **roles** (`--action-primary`, `--text-primary`, `--bg-surface`…), no `--brand-*` directo, salvo excepciones puntuales ya existentes (sidebar en `brand-navy-900`, `IconTile`).
 
@@ -77,20 +83,23 @@ Cada estado es un **badge tipo pill**: fondo tenue + texto oscuro de la misma fa
 | Estado | Tokens |
 |---|---|
 | Cashback disponible para canje / beneficio desbloqueado | `--state-success-*` |
-| Cashback acumulado (aún bajo el mínimo) | `--state-neutral-*` |
+| Cashback acumulado (aún bajo el mínimo) | `--state-info-*` |
+| Sin beneficios de garantía | `--state-neutral-*` |
 
 **Módulos futuros:** badge `--state-neutral-*` (o, dentro de la nav oscura, su versión translúcida con **borde punteado**) y etiqueta "próximamente".
 
-Regla: un estado = un color en todo el sistema. `rechazado` (solicitud) y `vencido` (código) comparten el rojo tenue porque ambos son "terminó mal / no válido"; eso es intencional y consistente. El verde queda reservado para estados de éxito/desbloqueo: por eso las barras de progreso se rellenan en navy, no en verde.
+Regla: un estado = un color en todo el sistema. `rechazado` (solicitud) y `vencido` (código) comparten el rojo tenue porque ambos son "terminó mal / no válido"; eso es intencional y consistente. El verde queda reservado para estados de éxito/desbloqueo: por eso las barras de progreso y la gráfica usan el azul `--highlight`, no verde.
 
 ## 4. Tipografía
 
 - **Encabezados (`h1`–`h6`):** `--font-display` (Sora) `--weight-semibold` (600), `--leading-tight`, color `--text-primary`. Viene de los estilos base de `globals.css`; no hace falta repetirlo en cada componente.
-- **Título de página (`h1`):** `--text-3xl` (30px), seguido de un subtítulo en `--text-secondary` (`#475569`) con `mt-2`. Ej.: "Bienvenido, {cliente}" / "Este es el estado general de tu cuenta."
+- **Título de página (`h1`):** `--text-3xl` (30px), seguido de un subtítulo en `--text-secondary` (`#475569`) con `mt-2`. Ej.: "Bienvenido, {cliente}" / "Consulta el estado general de tu cuenta."
 - **Título de tarjeta o bloque:** Sora, `--text-lg`/`--text-xl`; en estados como "próximamente", `--text-2xl`.
 - **Cuerpo, formularios, tablas, navegación, botones:** `--font-sans` (Inter). Cuerpo `--text-base` (16px) con `--leading-normal`; labels y texto secundario `--text-sm` (14px), peso `--weight-medium` en labels.
 - **Etiquetas de métrica ("eyebrow"):** `--font-mono` (JetBrains Mono), `--text-xs` (12px), `--weight-semibold`, MAYÚSCULAS, tracking `0.06em`, color `--text-secondary`. Ej.: "CASHBACK ACUMULADO".
-- **Montos, códigos de invitación, IDs, referencias, porcentajes:** `--font-mono` con `tabular-nums`, peso `--weight-medium`. Decisión funcional: evita confundir `0/O` y `1/l` cuando el cliente teclea un código, y alinea columnas de números.
+- **Montos protagonistas** (saldo, cashback, total del periodo, acumulado del ciclo): `--font-display` (Sora) `--weight-semibold` con `tabular-nums`, `--text-3xl` (o `--text-2xl`/`--text-xl` en valores secundarios).
+- **Montos en tablas y texto corrido, números de cotización:** Inter con `tabular-nums` (montos en `--weight-medium`).
+- **Monoespaciada (`--font-mono`)** queda para eyebrows, códigos de invitación e IDs técnicos: evita confundir `0/O` y `1/l` cuando el cliente teclea un código.
 - Pesos: la UI densa vive en 400 y 500; 600 queda para encabezados, eyebrows y badges. No usar 700 en el portal.
 
 Sentence case en títulos y labels; MAYÚSCULAS solo en eyebrows, badges y "próximamente". Sin punto final en labels y encabezados de UI.
@@ -127,18 +136,27 @@ Sentence case en títulos y labels; MAYÚSCULAS solo en eyebrows, badges y "pró
 - Todos con `:focus-visible` usando `--focus-ring` (naranja al 35%); los de peligro, `--focus-ring-danger`.
 
 ### Tarjetas
-- `Card`: `--bg-surface`, borde `--border`, `--radius-lg` (12px), padding 24px. Sombra `--shadow-md` solo en la tarjeta protagonista de la vista (ej. cashback).
-- **Tarjeta de métrica / saldo:** eyebrow mono en mayúsculas arriba (ver sección 4), valor en mono `tabular-nums` (`--text-xl` en métricas secundarias, `--text-4xl` en el saldo protagonista), pista opcional en `--text-sm` `--text-secondary`.
+- `Card`: `--bg-surface` blanco, borde casi invisible `--card-border`, radio `--card-radius` (16px), sombra suave `--card-shadow`, padding 24px. En v2 todas las tarjetas pesan igual: no hay tarjetas "más elevadas" que otras.
+- Las tablas también van dentro de este acabado (fondo blanco, radio 16px, sombra suave); nunca directamente sobre el fondo de página.
+- **Tarjeta de resumen (dashboard):** ícono circular a la izquierda como columna propia; a su derecha, eyebrow mono + badge de estado, valor en Sora, detalle en `--text-secondary`, bloque opcional (ej. último beneficio en fondo `--state-success-bg`) y enlace "Ver … →" en `--link`.
+- **Tarjeta de métrica / saldo:** eyebrow mono en mayúsculas arriba (ver sección 4), valor en Sora semibold `tabular-nums`, pista opcional en `--text-sm` `--text-secondary`.
+
+### Títulos de sección
+Los títulos de sección (`h2`, `--text-xl`) van **fuera** de la tarjeta, encima de ella ("Actividad PayPal", "Últimos movimientos"). **Excepción:** "Información de la cuenta" lleva su título **dentro** de la tarjeta (`--text-lg`), porque es una ficha autocontenida y no una sección con módulo propio.
 - Junto a cualquier saldo, la nota de "última actualización" (ver "Saldo y pagos").
 
 ### Íconos en tile (`IconTile`)
 Contenedor de 48px, cuadrado (`--radius`) o circular:
-- `neutral`: fondo `--bg-surface-alt`, ícono navy `#00005B`. Es el caso por defecto.
-- `accent`: fondo `--accent-soft` (`#FFF4E8`), ícono `#C95502`. Solo para destacar un logro (beneficio desbloqueado, modal de garantía obtenida).
+- `highlight`: fondo `--highlight-soft` (`#EEF3FF`), ícono `--highlight` (`#1F5BD8`). Para métricas y datos (cashback, actividad PayPal, ciclo de garantía).
+- `neutral`: fondo `--bg-surface-alt`, ícono navy `#00005B`. Para fichas de información y estados vacíos.
+- `accent`: fondo `--accent-soft` (`#FFF4E8`), ícono `#C95502`. Solo para logros (garantía extendida, beneficio desbloqueado, modal de garantía obtenida).
 - `onDark`: fondo `--brand-navy-800` (`#000039`), ícono blanco; para paneles navy.
 
 ### Barras de progreso
-Pista `--bg-medium` (`#F2F4F6`), relleno `--action-primary` (navy), altura 8px, pill. Porcentaje visible aparte en mono. No usar verde (reservado para estados de éxito).
+Pista `--bg-medium` (`#F2F4F6`), relleno `--highlight` (azul `#1F5BD8`), altura 8px, pill. Porcentaje visible aparte con `tabular-nums`. No usar verde (reservado para estados de éxito).
+
+### Gráfica de actividad
+Línea `--highlight` de 2.5px con área al 8% de opacidad, puntos rellenos con anillo blanco, 4 líneas guía tenues (`--border`, la base en `--border-strong`) y eje Y con valores redondos (`6.000`, no `5.933`). Selector de periodo (3/6/12 meses) arriba a la derecha de la tarjeta; el total y las transacciones mostradas corresponden a ese periodo. Meses con año ("abr 2026"); con 12 meses, el año solo en el primero y en enero.
 
 ### Saldo y pagos (PayPal / cashback)
 - Tablas: header en `--bg-surface-alt`, filas con borde inferior `--border`, montos alineados a la derecha con `tabular-nums`.
@@ -207,6 +225,7 @@ Tabler outline, `stroke` 1.75, tamaño 18px en navegación, 16–20px inline y 2
 - **No** usar el naranja como fondo del producto ni como botón primario del portal; es acento (su uso como CTA es propio de la landing).
 - **No** usar rojo como color de marca ni representar errores como bloques rojos sólidos; usar badges tenues.
 - **No** usar verde fuera de estados de éxito (ni en barras de progreso).
+- **No** usar el azul de interfaz como botón primario ni como color de marca; el primario es navy.
 - **No** prometer tiempo real en el saldo mientras la carga sea manual/CSV.
 - **No** mostrar funcionalidad a medias como un botón funcional; usar "próximamente".
 - **No** revelar en la UI por qué un código falló.
@@ -217,4 +236,4 @@ Tabler outline, `stroke` 1.75, tamaño 18px en navegación, 16–20px inline y 2
 
 ## Resumen en una frase
 
-El portal se sostiene en **navy dominante con naranja contenido** sobre fondos claros, un **sistema de estados de fondo tenue** mapeado uno a uno al negocio (con el rojo reservado solo para errores), y la disciplina de **decir la verdad en la UI** (saldo no es tiempo real, errores genéricos, nada a medias) — todo apoyado en tokens compartidos con la landing, pero aplicados con la sobriedad de una herramienta de trabajo que también usa el panel administrativo.
+El portal se sostiene en **navy dominante, azul para datos y naranja contenido** sobre fondos fríos con tarjetas blancas de sombra suave, un **sistema de estados de fondo tenue** mapeado uno a uno al negocio (con el rojo reservado solo para errores), y la disciplina de **decir la verdad en la UI** (saldo no es tiempo real, errores genéricos, nada a medias) — todo apoyado en tokens compartidos con la landing, pero aplicados con la sobriedad de una herramienta de trabajo que también usa el panel administrativo.

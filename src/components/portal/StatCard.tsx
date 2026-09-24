@@ -20,7 +20,7 @@ export function StatCard({
         </p>
         {icon}
       </div>
-      <p className="font-mono text-xl font-medium tabular-nums text-[var(--text-primary)]">{value}</p>
+      <p className="font-display text-xl font-semibold tabular-nums text-[var(--text-primary)]">{value}</p>
       {hint && <p className="text-sm text-[var(--text-secondary)]">{hint}</p>}
     </Card>
   );

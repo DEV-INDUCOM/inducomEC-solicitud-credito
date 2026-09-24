@@ -39,12 +39,12 @@ export function GarantiaCicloCard({ ciclo }: { ciclo: PortalCicloGarantia }) {
     <Card shadow className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <IconTile variant="neutral" shape="circle">
+          <IconTile variant="highlight" shape="circle">
             <IconShieldCheck size={22} stroke={1.75} />
           </IconTile>
           <div>
             <p className="text-sm text-[var(--text-secondary)]">Compras acumuladas (PayPal)</p>
-            <p className="font-mono text-4xl font-medium tabular-nums text-[var(--text-primary)]">
+            <p className="font-display text-3xl font-semibold tabular-nums text-[var(--text-primary)]">
               {formatMonto(ciclo.acumulado)}
             </p>
             {/* El acumulado del ciclo NO es el histórico de compras: al llegar
@@ -57,7 +57,7 @@ export function GarantiaCicloCard({ ciclo }: { ciclo: PortalCicloGarantia }) {
         </div>
 
         <div className="rounded-lg bg-[var(--bg-surface-alt)] px-4 py-3">
-          <p className="font-mono text-sm font-semibold tabular-nums text-[var(--text-primary)]">
+          <p className="text-sm font-semibold tabular-nums text-[var(--text-primary)]">
             {progreso}% del ciclo completado
           </p>
           <p className="mt-1 text-xs text-[var(--text-secondary)]">
@@ -80,7 +80,8 @@ export function GarantiaCicloCard({ ciclo }: { ciclo: PortalCicloGarantia }) {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label="Progreso del ciclo de garantía"
-              className="h-full rounded-full bg-[var(--action-primary)] transition-[width] duration-500"
+              // v2: mismo azul --highlight que ProgressBar y la gráfica.
+              className="h-full rounded-full bg-[var(--highlight)] transition-[width] duration-500"
               style={{ width: `${progreso}%` }}
             />
           </div>
@@ -92,9 +93,9 @@ export function GarantiaCicloCard({ ciclo }: { ciclo: PortalCicloGarantia }) {
          *  hito de 50%, la segunda en el de 100%. */}
         <div className="grid grid-cols-2 text-xs">
           <div className="flex items-start justify-between gap-2">
-            <span className="font-mono tabular-nums text-[var(--text-secondary)]">{formatMonto(0)}</span>
+            <span className="tabular-nums text-[var(--text-secondary)]">{formatMonto(0)}</span>
             <span className="translate-x-1/2 text-center">
-              <span className="block font-mono font-semibold tabular-nums text-[var(--text-primary)]">
+              <span className="block font-semibold tabular-nums text-[var(--text-primary)]">
                 {formatMonto(UMBRAL_5K)}
               </span>
               <span className="block text-[var(--text-secondary)]">+6 meses</span>
@@ -102,7 +103,7 @@ export function GarantiaCicloCard({ ciclo }: { ciclo: PortalCicloGarantia }) {
           </div>
           <div className="flex items-start justify-end">
             <span className="text-right">
-              <span className="block font-mono font-semibold tabular-nums text-[var(--text-primary)]">
+              <span className="block font-semibold tabular-nums text-[var(--text-primary)]">
                 {formatMonto(UMBRAL_10K)}
               </span>
               <span className="block text-[var(--text-secondary)]">+12 meses</span>

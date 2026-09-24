@@ -28,7 +28,7 @@ export function PaymentHistory({
   return (
     <>
       {/* Desktop / tablet: tabla con scroll horizontal solo si es inevitable */}
-      <div className="hidden overflow-x-auto rounded-lg border border-[color:var(--border)] md:block">
+      <div className="hidden overflow-x-auto rounded-[var(--card-radius)] border border-[color:var(--card-border)] bg-[var(--bg-surface)] shadow-[var(--card-shadow)] md:block">
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--bg-surface-alt)] text-xs uppercase tracking-[0.04em] text-[var(--text-secondary)]">
             <tr>
@@ -62,7 +62,7 @@ export function PaymentHistory({
                     <span className="text-[var(--text-muted)]">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right font-mono tabular-nums text-[var(--text-primary)]">
+                <td className="px-4 py-3 text-right font-medium tabular-nums text-[var(--text-primary)]">
                   {formatMonto(pago.montoPagado)}
                 </td>
               </tr>
@@ -76,11 +76,11 @@ export function PaymentHistory({
         {pagos.map((pago) => (
           <li
             key={pago.id}
-            className="flex flex-col gap-2 rounded-lg border border-[color:var(--border)] bg-[var(--bg-surface)] p-4"
+            className="flex flex-col gap-2 rounded-[var(--card-radius)] border border-[color:var(--card-border)] bg-[var(--bg-surface)] p-4 shadow-[var(--card-shadow)]"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm text-[var(--text-secondary)]">{formatFecha(pago.fecha)}</span>
-              <span className="font-mono font-medium tabular-nums text-[var(--text-primary)]">
+              <span className="font-medium tabular-nums text-[var(--text-primary)]">
                 {formatMonto(pago.montoPagado)}
               </span>
             </div>

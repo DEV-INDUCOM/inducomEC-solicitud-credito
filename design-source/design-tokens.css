@@ -74,6 +74,17 @@
   --slate-900: #0F172A;
   --slate-950: #020617;
 
+  /* Neutro frío: fondo de página del portal v2 (un gris apenas azulado). */
+  --slate-cool-50: #F4F6FA;
+
+  /* Azul de interfaz (NO es marca): rol "highlight" del portal v2 para
+     íconos de métrica, enlaces y gráficos. El navy sigue siendo la marca y
+     el botón primario; este azul solo realza datos. */
+  --ui-blue-50:  #EEF3FF;
+  --ui-blue-100: #DCE6FF;
+  --ui-blue-600: #1F5BD8;
+  --ui-blue-700: #1848B0;
+
   /* ------------------------------------------------------------------------
      3. ESTADOS SEMÁNTICOS
      El rojo NO es marca. Se reserva para danger: rechazado, error o vencido.
@@ -151,6 +162,11 @@
   --link:       var(--brand-navy-600);
   --link-hover: var(--brand-orange-500);
 
+  /* Highlight: realce de datos (íconos de métrica, gráficos, progreso).
+     Por defecto es el navy de marca; la superficie portal lo pasa a azul. */
+  --highlight:      var(--brand-navy-600);
+  --highlight-soft: var(--brand-navy-50);
+
   /* Navegación / header */
   --nav-bg:          var(--white);
   --nav-text:        var(--brand-navy-600);
@@ -169,6 +185,11 @@
 
   --input-height:      2.75rem; /* 44px */
   --card-padding:      var(--space-6);
+  /* Acabado de tarjeta: la superficie portal los sobreescribe (v2 minimalista). */
+  --card-radius:       var(--radius-lg);  /* 12px */
+  --card-border:       var(--slate-200);
+  --card-shadow:       none;
+  --card-shadow-raised: var(--shadow-md);
   --section-padding-y: var(--space-16); /* 64px, coincide con el py-16 usado en las secciones de landing */
   --container-max:     75rem; /* 1200px */
 
@@ -275,11 +296,23 @@
    ============================================================================ */
 
 [data-surface="portal"] {
-  --bg-page:        var(--slate-50);
+  /* v2 minimalista: fondo frío, tarjetas blancas sin borde duro, sombra
+     suave y azul de interfaz para datos. Aplica a /portal/* y /admin/*. */
+  --bg-page:        var(--slate-cool-50);  /* #F4F6FA */
   --action-primary:         var(--brand-navy-600);
   --action-primary-hover:   var(--brand-navy-700);
   --action-primary-pressed: var(--brand-navy-800);
   --accent:                 var(--brand-orange-500);
+
+  --highlight:      var(--ui-blue-600);    /* #1F5BD8 */
+  --highlight-soft: var(--ui-blue-50);     /* #EEF3FF */
+  --link:           var(--ui-blue-600);
+  --link-hover:     var(--ui-blue-700);    /* #1848B0 */
+
+  --card-radius:        var(--radius-xl); /* 16px */
+  --card-border:        #EDF0F5;           /* un paso más tenue que --border */
+  --card-shadow:        0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+  --card-shadow-raised: var(--card-shadow); /* en v2 todas las tarjetas pesan igual */
 }
 
 /* ============================================================================
