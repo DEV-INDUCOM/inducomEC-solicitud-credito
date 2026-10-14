@@ -38,6 +38,7 @@ export function ResumenBeneficioCard({
         {icono}
       </IconTile>
 
+      {/*Ese texto está dentro de un contenedor con gap-1, que deja solo 4px entre el título ("GARANTÍA EXTENDIDA") y lo que viene debajo. Por eso se ve tan pegado.*/}
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-start justify-between gap-3">
@@ -46,7 +47,8 @@ export function ResumenBeneficioCard({
             </p>
             {estado && <StatusBadge tone={estado.tone}>{estado.label}</StatusBadge>}
           </div>
-          {valor}
+          {/* mt-2: separa el valor del título, antes quedaba pegado */}
+          <div className="mt-2">{valor}</div>
           {detalle && <p className="text-sm text-[var(--text-secondary)]">{detalle}</p>}
         </div>
 

@@ -1,0 +1,389 @@
+{
+  "name": "Sync beneficios PayPal - Google Sheets (clientes)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "a1f0c6e2-0001-4a10-9f01-000000000001",
+      "name": "Cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-420, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- ESTADO ACTUAL DE TODOS LOS CLIENTES (tab \"leads\")\n-- Una fila por cliente. El ciclo 'abierto' es el actual: solo puede haber\n-- uno por cliente (lo garantiza uq_ciclo_abierto_por_cliente).\n-- Los coalesce cubren al cliente que todavia no tiene ningun pago PayPal:\n-- en ese caso no tiene ciclo abierto y los joins traen null.\nselect\n  c.id::text                                                as cliente_id,\n  c.nombre_visible                                          as cliente,\n  c.identificacion                                          as ruc,\n  c.email                                                   as correo,\n  case when c.activo then 'Activo' else 'Archivado' end     as estado_cliente,\n  coalesce(cg.numero, 0)                                    as ciclo_actual,\n  round(coalesce(cg.acumulado, 0), 2)                       as acumulado_ciclo,\n  round(greatest(5000  - coalesce(cg.acumulado, 0), 0), 2)  as falta_para_5k,\n  round(greatest(10000 - coalesce(cg.acumulado, 0), 0), 2)  as falta_para_10k,\n  case when cg.umbral_5k_pago_id  is not null then 'Si' else 'No' end as gano_6_meses,\n  case when cg.umbral_10k_pago_id is not null then 'Si' else 'No' end as gano_12_meses,\n  round(coalesce(s.saldo_cashback, 0), 2)                   as cashback_ganado,\n  round(coalesce(s.cashback_redimido, 0), 2)                as cashback_redimido,\n  round(coalesce(s.cashback_disponible, 0), 2)              as cashback_disponible,\n  -- El cashback se puede redimir a partir de USD 20 (regla del programa).\n  case when coalesce(s.cashback_disponible, 0) >= 20 then 'Si' else 'No' end as puede_redimir,\n  to_char(now() at time zone 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as actualizado\nfrom public.clientes c\nleft join public.ciclos_garantia cg\n       on cg.cliente_id = c.id and cg.estado = 'abierto'\nleft join public.saldo_por_cliente s\n       on s.cliente_id = c.id\norder by coalesce(cg.acumulado, 0) desc, c.nombre_visible;",
+        "options": {}
+      },
+      "id": "a1f0c6e2-0002-4a10-9f01-000000000002",
+      "name": "Query estado de clientes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-180, -140]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "l01",
+              "name": "cliente_id",
+              "value": "={{ $('Query estado de clientes').item.json.cliente_id }}",
+              "type": "string"
+            },
+            {
+              "id": "l02",
+              "name": "cliente",
+              "value": "={{ $('Query estado de clientes').item.json.cliente }}",
+              "type": "string"
+            },
+            {
+              "id": "l03",
+              "name": "ruc",
+              "value": "={{ $('Query estado de clientes').item.json.ruc }}",
+              "type": "string"
+            },
+            {
+              "id": "l04",
+              "name": "correo",
+              "value": "={{ $('Query estado de clientes').item.json.correo }}",
+              "type": "string"
+            },
+            {
+              "id": "l05",
+              "name": "estado_cliente",
+              "value": "={{ $('Query estado de clientes').item.json.estado_cliente }}",
+              "type": "string"
+            },
+            {
+              "id": "l06",
+              "name": "ciclo_actual",
+              "value": "={{ $('Query estado de clientes').item.json.ciclo_actual }}",
+              "type": "number"
+            },
+            {
+              "id": "l07",
+              "name": "acumulado_ciclo",
+              "value": "={{ $('Query estado de clientes').item.json.acumulado_ciclo }}",
+              "type": "number"
+            },
+            {
+              "id": "l08",
+              "name": "falta_para_5k",
+              "value": "={{ $('Query estado de clientes').item.json.falta_para_5k }}",
+              "type": "number"
+            },
+            {
+              "id": "l09",
+              "name": "falta_para_10k",
+              "value": "={{ $('Query estado de clientes').item.json.falta_para_10k }}",
+              "type": "number"
+            },
+            {
+              "id": "l10",
+              "name": "gano_6_meses",
+              "value": "={{ $('Query estado de clientes').item.json.gano_6_meses }}",
+              "type": "string"
+            },
+            {
+              "id": "l11",
+              "name": "gano_12_meses",
+              "value": "={{ $('Query estado de clientes').item.json.gano_12_meses }}",
+              "type": "string"
+            },
+            {
+              "id": "l12",
+              "name": "cashback_ganado",
+              "value": "={{ $('Query estado de clientes').item.json.cashback_ganado }}",
+              "type": "number"
+            },
+            {
+              "id": "l13",
+              "name": "cashback_redimido",
+              "value": "={{ $('Query estado de clientes').item.json.cashback_redimido }}",
+              "type": "number"
+            },
+            {
+              "id": "l14",
+              "name": "cashback_disponible",
+              "value": "={{ $('Query estado de clientes').item.json.cashback_disponible }}",
+              "type": "number"
+            },
+            {
+              "id": "l15",
+              "name": "puede_redimir",
+              "value": "={{ $('Query estado de clientes').item.json.puede_redimir }}",
+              "type": "string"
+            },
+            {
+              "id": "l16",
+              "name": "actualizado",
+              "value": "={{ $('Query estado de clientes').item.json.actualizado }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c6e2-0003-4a10-9f01-000000000003",
+      "name": "Map fila leads",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [60, -140]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "PEGA_AQUI_EL_ID_DEL_SHEET",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["ruc"],
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "a1f0c6e2-0004-4a10-9f01-000000000004",
+      "name": "Sheets tab leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [300, -140]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- GARANTIAS DESBLOQUEADAS (tab \"beneficios obtenidos\")\n-- Una fila por beneficio otorgado. Es historico: sobrevive al reinicio del\n-- ciclo, porque la garantia pertenece a la cotizacion, no al ciclo.\n-- 'Vigente' / 'Expirada' NO se guardan en la tabla: se deducen contra la\n-- fecha de hoy, para no depender de un proceso nocturno.\nselect\n  g.id::text                           as garantia_id,\n  c.nombre_visible                     as cliente,\n  c.identificacion                     as ruc,\n  c.email                              as correo,\n  coalesce(g.cotizacion_numero, '')    as cotizacion,\n  coalesce(g.deal_nombre, '')          as negocio,\n  g.umbral::int                        as umbral_cruzado,\n  round(g.monto_pago, 2)               as monto_del_pago,\n  round(g.acumulado_alcanzado, 2)      as acumulado_al_cruzar,\n  g.meses_fabrica,\n  g.meses_extension,\n  g.meses_totales,\n  to_char(g.fecha_inicio,    'YYYY-MM-DD') as garantia_desde,\n  to_char(g.fecha_fin_total, 'YYYY-MM-DD') as garantia_hasta,\n  case\n    when g.estado = 'revocada_por_limite' then 'Revocada (desplazada)'\n    when g.fecha_fin_total < current_date then 'Expirada'\n    else 'Vigente'\n  end                                  as situacion,\n  coalesce(g.cotizacion_url, '')       as link_cotizacion,\n  to_char(g.created_at at time zone 'America/Guayaquil', 'YYYY-MM-DD HH24:MI') as desbloqueada_en\nfrom public.garantias_extendidas g\njoin public.clientes c on c.id = g.cliente_id\norder by g.created_at desc;",
+        "options": {}
+      },
+      "id": "a1f0c6e2-0005-4a10-9f01-000000000005",
+      "name": "Query garantias otorgadas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [-180, 160]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b01",
+              "name": "garantia_id",
+              "value": "={{ $('Query garantias otorgadas').item.json.garantia_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b02",
+              "name": "cliente",
+              "value": "={{ $('Query garantias otorgadas').item.json.cliente }}",
+              "type": "string"
+            },
+            {
+              "id": "b03",
+              "name": "ruc",
+              "value": "={{ $('Query garantias otorgadas').item.json.ruc }}",
+              "type": "string"
+            },
+            {
+              "id": "b04",
+              "name": "correo",
+              "value": "={{ $('Query garantias otorgadas').item.json.correo }}",
+              "type": "string"
+            },
+            {
+              "id": "b05",
+              "name": "cotizacion",
+              "value": "={{ $('Query garantias otorgadas').item.json.cotizacion }}",
+              "type": "string"
+            },
+            {
+              "id": "b06",
+              "name": "negocio",
+              "value": "={{ $('Query garantias otorgadas').item.json.negocio }}",
+              "type": "string"
+            },
+            {
+              "id": "b07",
+              "name": "umbral_cruzado",
+              "value": "={{ $('Query garantias otorgadas').item.json.umbral_cruzado }}",
+              "type": "number"
+            },
+            {
+              "id": "b08",
+              "name": "monto_del_pago",
+              "value": "={{ $('Query garantias otorgadas').item.json.monto_del_pago }}",
+              "type": "number"
+            },
+            {
+              "id": "b09",
+              "name": "acumulado_al_cruzar",
+              "value": "={{ $('Query garantias otorgadas').item.json.acumulado_al_cruzar }}",
+              "type": "number"
+            },
+            {
+              "id": "b10",
+              "name": "meses_fabrica",
+              "value": "={{ $('Query garantias otorgadas').item.json.meses_fabrica }}",
+              "type": "number"
+            },
+            {
+              "id": "b11",
+              "name": "meses_extension",
+              "value": "={{ $('Query garantias otorgadas').item.json.meses_extension }}",
+              "type": "number"
+            },
+            {
+              "id": "b12",
+              "name": "meses_totales",
+              "value": "={{ $('Query garantias otorgadas').item.json.meses_totales }}",
+              "type": "number"
+            },
+            {
+              "id": "b13",
+              "name": "garantia_desde",
+              "value": "={{ $('Query garantias otorgadas').item.json.garantia_desde }}",
+              "type": "string"
+            },
+            {
+              "id": "b14",
+              "name": "garantia_hasta",
+              "value": "={{ $('Query garantias otorgadas').item.json.garantia_hasta }}",
+              "type": "string"
+            },
+            {
+              "id": "b15",
+              "name": "situacion",
+              "value": "={{ $('Query garantias otorgadas').item.json.situacion }}",
+              "type": "string"
+            },
+            {
+              "id": "b16",
+              "name": "link_cotizacion",
+              "value": "={{ $('Query garantias otorgadas').item.json.link_cotizacion }}",
+              "type": "string"
+            },
+            {
+              "id": "b17",
+              "name": "desbloqueada_en",
+              "value": "={{ $('Query garantias otorgadas').item.json.desbloqueada_en }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c6e2-0006-4a10-9f01-000000000006",
+      "name": "Map fila beneficios",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [60, 160]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "PEGA_AQUI_EL_ID_DEL_SHEET",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "beneficios obtenidos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["garantia_id"],
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "a1f0c6e2-0007-4a10-9f01-000000000007",
+      "name": "Sheets tab beneficios obtenidos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [300, 160]
+    }
+  ],
+  "connections": {
+    "Cada hora": {
+      "main": [
+        [
+          {
+            "node": "Query estado de clientes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query garantias otorgadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query estado de clientes": {
+      "main": [
+        [
+          {
+            "node": "Map fila leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map fila leads": {
+      "main": [
+        [
+          {
+            "node": "Sheets tab leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query garantias otorgadas": {
+      "main": [
+        [
+          {
+            "node": "Map fila beneficios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map fila beneficios": {
+      "main": [
+        [
+          {
+            "node": "Sheets tab beneficios obtenidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
